@@ -127,12 +127,16 @@ def collect_profiles(dir):
   return { 'materials': m, 'profiles': p, 'devices': l }
 
 
-def check_profiles(p, autofix=True):
-  # p = { 'materials': m, 'profiles': p, 'devices': l } as generated with collect_profiles
+def create_laserprofile(mpd, n, d, p, t):
+  return "create_laserprofile not impl."
+
+
+def check_profiles(mpd, autofix=True):
+  # mpd = { 'materials': m, 'profiles': p, 'devices': l } as generated with collect_profiles
 
   r = []
   ### find materials that have no name. (autocreated by profiles, but xml file missing in /materials folder.)
-  for n,m in p['materials'].items():
+  for n,m in mpd['materials'].items():
     if not 'name' in m:
       r.append(f"material '{n}' used in laserprofiles, but materials/{encode_xml_name(n)}.xml is missing.")
       if autofix:
@@ -141,7 +145,7 @@ def check_profiles(p, autofix=True):
       m['thicknesses'] = []
 
   ### check that the thicknesses listed with each material agrees with the materials profiles.devices.profile.thickness tree
-  for n,m in p['materials'].items():
+  for n,m in mpd['materials'].items():
     tseen = { t: 0 for t in m['thicknesses'] }
     tmiss = {}
     # print(n, m['thicknesses'])
@@ -160,5 +164,26 @@ def check_profiles(p, autofix=True):
       r.append(f"material '{n}': thickness {t} used in laserprofiles, but not listed in thicknesses.")
       if autofix:
         m['thicknesses'] = sorted(m['thicknesses'] + [t])
+
+  ### devices, profiles, and thicknesses are a three-dimensional space.
+  ## the thicknesses dimension is material dependant.
+  ## check that all points in this space are set in each material.
+  devs = list(mpd['devices'].keys())
+  profs = list(mpd['profiles'].keys())
+  print(devs, profs)
+  for n,m in mpd['materials'].items():
+    ths = m['thicknesses']
+    print(n, ths)
+    for d in devs:
+      if not d in m['profiles']:
+        m['profiles'][d] = {}
+      for p in profs:
+        if not p in m['profiles'][d]:
+          m['profiles'][d][p] = {}
+        for t in ths:
+          if not t in m['profiles'][d][p]:
+            if autofix:
+              m['profiles'][d][p][t] = create_laserprofile(mpd, n, d, p, t)
+            r.append(f"create_laserprofile(mpd, '{n}', '{d}', '{p}', '{t}')")
 
   return r
