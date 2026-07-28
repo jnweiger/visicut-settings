@@ -3,3 +3,5 @@
 # git update-index --assume-unchanged settings/settings.private.xml
 .directory
 settings/settings.private.xml
+tools/lib/__pycache__
+
