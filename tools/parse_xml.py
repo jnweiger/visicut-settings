@@ -9,7 +9,7 @@ import os, sys, json
 LIB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib')
 sys.path.insert(0, LIB_DIR)
 
-import visicut_xml
+from visicut_xml import *
 
 
 if __name__ == "__main__":
@@ -17,4 +17,6 @@ if __name__ == "__main__":
 
   if len(sys.argv) > 1:
     settings_dir = sys.argv[1]
-  print(json.dumps(visicut_xml.collect_profiles(settings_dir)))
+  p = collect_profiles(settings_dir)
+  print(check_profiles(p))
+  # print(json.dumps(p))
