@@ -1,21 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <visicutPreferences version="0">
-  <defaultMapping>rot schneiden, grün markieren, rest gravieren</defaultMapping>
   <disableSandbox>false</disableSandbox>
   <useFilenamesForJobs>false</useFilenamesForJobs>
   <autoUpdateSettingsDisabled>false</autoUpdateSettingsDisabled>
   <lastAutoUpdateTime>0</lastAutoUpdateTime>
-  <lastAutoUpdateLabName></lastAutoUpdateLabName>
   <windowBounds>
-    <x>327</x>
-    <y>77</y>
-    <width>1593</width>
-    <height>1003</height>
+    <x>139</x>
+    <y>81</y>
+    <width>1301</width>
+    <height>819</height>
   </windowBounds>
   <useThicknessAsFocusOffset>false</useThicknessAsFocusOffset>
   <recentFiles>
-    <string>/home/jw/.visicut/examples/FabLabNBG/monkey-head.svg</string>
+    <string>/tmp/temp-visicut-790d14wi/new.svg</string>
+    <string>/tmp/temp-visicut-qc0e7tkh/zeichnung.svg</string>
+    <string>/tmp/temp-visicut-xn0_2kml/beuyes_silh.svg</string>
+    <string>/tmp/temp-visicut-oyyppa0p/beuyes_silh.svg</string>
+    <string>/media/jw/FEC2-D49A/Flasche_Dürerweg Kopie 2.png</string>
   </recentFiles>
   <lastMaterial>Sperrholz Linde</lastMaterial>
   <lastLaserDevice>Thunderlaser Nova 35</lastLaserDevice>

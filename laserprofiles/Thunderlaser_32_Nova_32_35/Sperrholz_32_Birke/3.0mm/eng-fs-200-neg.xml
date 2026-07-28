@@ -5,6 +5,6 @@
     <power>70.0</power>
     <speed>30.0</speed>
     <frequency>500</frequency>
-    <min__power>50.0</min__power>
+    <min__power>60.0</min__power>
   </com.t__oster.liblasercut.properties.FloatMinMaxPowerSpeedFrequencyProperty>
 </linked-list>

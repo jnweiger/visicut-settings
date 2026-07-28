@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<rasterProfile version="0.0">
+  <DPI>200.0</DPI>
+  <description>A new Laserprofile</description>
+  <name>eng-fs-200-neg</name>
+  <invertColors>true</invertColors>
+  <colorShift>-30</colorShift>
+  <ditherAlgorithm class="de.thomas_oster.liblasercut.dithering.FloydSteinberg">
+    <progress>0</progress>
+  </ditherAlgorithm>
+</rasterProfile>

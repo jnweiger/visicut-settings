@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <material version="0">
+  <description>20260208 jw, eng-fs-200</description>
   <engraveColor>#000000</engraveColor>
   <cutColor>#ff0000</cutColor>
-  <color>#fff0b4</color>
-  <name>Sperrholz Buche</name>
+  <color>#ffffff</color>
+  <name>Büttenpapier Arches 300g</name>
   <materialThicknesses>
-    <float>1.5</float>
-    <float>3.0</float>
-    <float>4.0</float>
-    <float>6.0</float>
+    <float>0.2</float>
   </materialThicknesses>
 </material>
