@@ -17,6 +17,6 @@ if __name__ == "__main__":
 
   if len(sys.argv) > 1:
     settings_dir = sys.argv[1]
-  p = collect_profiles(settings_dir)
-  print(check_profiles(p))
+  mpd = collect_profiles(settings_dir)
+  print(json.dumps(check_profiles(mpd)))
   # print(json.dumps(p))

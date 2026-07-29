@@ -5,7 +5,8 @@
 # (C) 2026, juergen@fabmail.org
 
 
-import re, xmltodict, pathlib
+import re, xmltodict, json, pathlib
+import datetime
 
 
 def collect_materials(dir):
@@ -90,9 +91,23 @@ def collect_devices(dir):
 
 
 def collect_profiles(dir):
+  # This augments the data with attributes found in annotations.json
+  # the visicut xml structure has no freetext field for comments here.
+  # (description exisits for devices and profiles, but wiki comments correspond to laserprofile descriptions
   m = collect_materials(dir)
   pdir = pathlib.Path(dir + "/laserprofiles")
-  r = []
+  anno_file = pdir.joinpath("annotations.json")
+  def_file = pdir.joinpath("defaults.json")
+  anno = {}
+  if anno_file.is_file():
+    anno = json.load(open(anno_file))
+  # {'Zing/Kiefernbrettchen/5.0mm/cut.xml': {'description': 'gen 20260729', 'source': '../4.0mm/cut.xml via /tool/vcprofman.py'}}
+
+  defaults = {}
+  if def_file.is_file():
+    defaults = json.load(open(def_file))
+  # {'Zing/Kiefernbrettchen/5.0mm/cut.xml': {'description': 'gen 20260729', 'source': '../4.0mm/cut.xml via /tool/vcprofman.py'}}
+
   for p in pdir.rglob("*.xml"):
     d = xmltodict.parse(open(p, 'rb'), xml_attribs=False)
     # {'linked-list': {'com.t__oster.liblasercut.properties.FloatMinMaxPowerSpeedFrequencyProperty':
@@ -108,8 +123,9 @@ def collect_profiles(dir):
     lp["data"] = { decode_xml_name(k): maybe_float_or_bool(v) for k, v in d.items() }
     # {'device': 'Zing', 'material': 'Kraftplex', 'thickness': 1.0, 'profile': 'mark', 'data': {'power': 30.0, 'speed': 100.0, 'focus': 0.0, 'hideFocus': True, 'frequency': 2000.0}}
     # {'device': 'Thunderlaser Nova 35', 'material': 'Eiche Hirnholz', 'thickness': 5.0, 'profile': 'engrave-fs-200-neg', 'data': {'power': 100.0, 'speed': 66.0, 'frequency': 500.0, 'min_power': 10.0}}
+    if str(rpath) in anno:
+        lp["data"]["annotation"] = anno[str(rpath)]
 
-    r.append(lp)
     if not lp['material'] in m:
       m[lp['material']] = {}
     mlp = m[lp['material']]
@@ -124,11 +140,77 @@ def collect_profiles(dir):
   p = collect_profile_details(dir)
   l = collect_devices(dir)
 
-  return { 'materials': m, 'profiles': p, 'devices': l }
+  return { 'materials': m, 'profiles': p, 'devices': l, 'defaults': defaults }
 
 
-def create_laserprofile(mpd, n, d, p, t):
-  return "create_laserprofile not impl."
+# Express the new path n as relative path coming from base b
+# If paths are identical, return "./cut.xml"
+# If one level up reaches inside b, return "../4.0mm/cut.xml"
+# Similar to os.path.replpath(), but we
+#  - treat the last component nicely as file, unless the path ends with "/"
+#  - don't create long ../ chains, when there is no match. We simply return the full new path.
+def frelpath(n, b):
+  count = 0
+  s = len(n)
+  while True:
+    try:
+      s = n.rindex("/", 0, s)
+    except (ValueError):
+      return b
+
+    if b.startswith(n[:s] + "/"):
+      pre = "../" * count
+      if pre == "":
+        pre = "./"
+      return pre + b[len(n[:s])+1:]
+    count = count + 1
+
+
+def path_of_laserprofile(m, d, p, t, b=None):
+  path = f"{d}/{m}/{t}mm/{p}.xml"
+  path = encode_xml_name(path)
+  if b:
+    return frelpath(path, b)
+  return path
+
+
+def used_laser_profiles(mpd, m, d):
+  plist = []
+  try:
+    tree = mpd['materials'][m]['profiles'][d]
+    for p in tree:
+      for t in tree[p]:
+        plist.append({ 'profile': p, 'thickness': t, 'data': tree[p][t] })
+  except:
+     pass
+  return plist
+
+
+def create_laserprofile(mpd, material_name, device_name, profile_name, thickness):
+  print(f"clp({material_name}, {device_name}, {profile_name}, {thickness})")
+  # plist = used_laser_profiles(mpd, material_name, device_name)
+  # if plist:
+  #   print(f"clp have plist:", plist)
+  #   # raise "create_laserprofile with plist not impl."
+  if not "defaults" in mpd:
+    raise "create_laserprofile cannot create profile without defaults."
+  dlist = mpd['defaults'][device_name]
+  for i in range(len(dlist)):
+    d = dlist[i]
+    # Material    Profile     Thickness   { ...data... }
+    # [ "holz",   "cut",          "3.0",  { "speed": 33, "power": 34 } ]
+    # [ 'holz',   'mark|eng',     '',     {'speed': 99, 'power': 34}]
+    if re.search(d[0], material_name, re.IGNORECASE) and \
+       re.search(d[1], profile_name,  re.IGNORECASE) and \
+       re.search(d[2], str(thickness),     re.IGNORECASE):
+      print(f"defaults.{device_name}.{i}: match", d)
+      r = d[3].copy()
+      date = datetime.datetime.now().strftime("%Y%m%d")
+
+      r['annotations'] = { "source": f"defaults.{device_name}.{i}", "description": "gen "+date }
+      return r;
+  print(f"{device_name}: no matching default: ", dlist)
+  raise "create_laserprofile not impl."
 
 
 def check_profiles(mpd, autofix=True):
@@ -170,10 +252,10 @@ def check_profiles(mpd, autofix=True):
   ## check that all points in this space are set in each material.
   devs = list(mpd['devices'].keys())
   profs = list(mpd['profiles'].keys())
-  print(devs, profs)
+  # print(devs, profs)
   for n,m in mpd['materials'].items():
     ths = m['thicknesses']
-    print(n, ths)
+    # print(n, ths)
     for d in devs:
       if not d in m['profiles']:
         m['profiles'][d] = {}
