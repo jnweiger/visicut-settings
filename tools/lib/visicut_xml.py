@@ -97,15 +97,15 @@ def collect_profiles(dir):
   m = collect_materials(dir)
   pdir = pathlib.Path(dir + "/laserprofiles")
   anno_file = pdir.joinpath("annotations.json")
-  def_file = pdir.joinpath("defaults.json")
+  gen_file = pdir.joinpath("generator.json")
   anno = {}
   if anno_file.is_file():
     anno = json.load(open(anno_file))
   # {'Zing/Kiefernbrettchen/5.0mm/cut.xml': {'description': 'gen 20260729', 'source': '../4.0mm/cut.xml via /tool/vcprofman.py'}}
 
-  defaults = {}
-  if def_file.is_file():
-    defaults = json.load(open(def_file))
+  generator = {}
+  if gen_file.is_file():
+    generator = json.load(open(gen_file))
   # {'Zing/Kiefernbrettchen/5.0mm/cut.xml': {'description': 'gen 20260729', 'source': '../4.0mm/cut.xml via /tool/vcprofman.py'}}
 
   for p in pdir.rglob("*.xml"):
@@ -140,7 +140,7 @@ def collect_profiles(dir):
   p = collect_profile_details(dir)
   l = collect_devices(dir)
 
-  return { 'materials': m, 'profiles': p, 'devices': l, 'defaults': defaults }
+  return { 'materials': m, 'profiles': p, 'devices': l, 'generator': generator }
 
 
 # Express the new path n as relative path coming from base b
@@ -192,9 +192,9 @@ def create_laserprofile(mpd, material_name, device_name, profile_name, thickness
   # if plist:
   #   print(f"clp have plist:", plist)
   #   # raise "create_laserprofile with plist not impl."
-  if not "defaults" in mpd:
-    raise f"{print_prefix}create_laserprofile cannot create profile without defaults."
-  dlist = mpd['defaults'][device_name]
+  if not "generator" in mpd or not mpd['generator']:
+    raise f"{print_prefix}create_laserprofile cannot create profile without generator."
+  dlist = mpd['generator'][device_name]
   for i in range(len(dlist)):
     d = dlist[i]
     # Material    Profile     Thickness   { ...data... }
@@ -203,11 +203,11 @@ def create_laserprofile(mpd, material_name, device_name, profile_name, thickness
     if re.search(d[0], material_name, re.IGNORECASE) and \
        re.search(d[1], profile_name,  re.IGNORECASE) and \
        re.search(d[2], str(thickness),     re.IGNORECASE):
-      print(f"{print_prefix}defaults.{device_name}.{i}: match", d)
+      print(f"{print_prefix}generator.{device_name}.{i}: match", d)
       r = d[3].copy()
       date = datetime.datetime.now().strftime("%Y%m%d")
 
-      r['annotations'] = { "source": f"defaults.{device_name}.{i}", "description": "gen "+date }
+      r['annotations'] = { "source": f"generator.{device_name}.{i}", "description": "gen "+date }
       return r;
   print(f"{print_prefix}{device_name}: no matching default: ", [[d[0], d[1], d[2]] for d in dlist])
   raise "{print_prefix}create_laserprofile not impl."
