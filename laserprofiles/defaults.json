@@ -1,23 +1,55 @@
 {
   "Zing": [
-    [ "papier", "cut",		"^0",		{ "power": 100, "speed": 80, "frequency": 500 } ],
-    [ "papier",	"mark|eng",	"",		{ "power": 15, 	"speed": 100, "frequency": 500 } ],
+    [ "acryl", 		"cut",		"^(9,10)",	{ "power": 100, "speed": 5, "frequency": 5000 } ],
+    [ "acryl", 		"cut",		"^(7,8)",	{ "power": 100, "speed": 8, "frequency": 5000 } ],
+    [ "acryl", 		"cut",		"^6",		{ "power": 100, "speed": 10, "frequency": 5000 } ],
+    [ "acryl", 		"cut",		"^5",		{ "power": 100, "speed": 15, "frequency": 5000 } ],
+    [ "acryl", 		"cut",		"^4",		{ "power": 100, "speed": 25, "frequency": 5000 } ],
+    [ "acryl", 		"cut",		"^3",		{ "power": 100, "speed": 40, "frequency": 5000 } ],
+    [ "acryl", 		"cut",		"^012",		{ "power": 100, "speed": 50, "frequency": 5000 } ],
+    [ "acryl",		"mark|eng",	"",		{ "power": 25, 	"speed": 100, "frequency": 5000 } ],
 
-    [ "holz", 	"cut",		"^8",		{ "power": 100, "speed": 10, "frequency": 500 } ],
-    [ "holz", 	"cut",		"^7",		{ "power": 100, "speed": 12, "frequency": 500 } ],
-    [ "holz", 	"cut",		"^6",		{ "power": 100, "speed": 15, "frequency": 500 } ],
-    [ "holz", 	"cut",		"^5",		{ "power": 100, "speed": 17, "frequency": 500 } ],
-    [ "holz", 	"cut",		"^4",		{ "power": 100, "speed": 20, "frequency": 500 } ],
-    [ "holz", 	"cut",		"^3",		{ "power": 100, "speed": 30, "frequency": 500 } ],
-    [ "holz", 	"cut",		"^2",		{ "power": 100, "speed": 40, "frequency": 500 } ],
-    [ "holz", 	"cut",		"^1",		{ "power": 100, "speed": 60, "frequency": 500 } ],
-    [ "holz", 	"cut",		"^0",		{ "power": 100, "speed": 80, "frequency": 500 } ],
+    [ "hpl( |$)",	"cut",		"^[234]",	{ "power": 100, "speed": 10, "frequency": 5000 } ],
+    [ "hpl( |$)",	"cut",		"^[01]",	{ "power": 100, "speed": 20, "frequency": 5000 } ],
+    [ "hpl( |$)",	"mark|eng",	"",		{ "power": 25, "speed": 100, "frequency": 5000 } ],
+
+    [ "pu( |$)|schaum",	"cut",		"^1[012]",	{ "power": 100, "speed": 80, "frequency": 5000 } ],
+    [ "pu( |$)|schaum",	"cut",		"^[6789]",	{ "power": 75, "speed": 100, "frequency": 5000 } ],
+    [ "pu( |$)|schaum",	"cut",		"^[12345]",	{ "power": 50, "speed": 100, "frequency": 5000 } ],
+    [ "pu( |$)|schaum",	"mark|eng",	"",		{ "power": 25, 	"speed": 100, "frequency": 5000 } ],
+
+    [ "pom|delrin",	"cut",		"^[56]",	{ "power": 100, "speed": 5, "frequency": 5000 } ],
+    [ "pom|delrin",	"cut",		"^[234]",	{ "power": 100, "speed": 10, "frequency": 5000 } ],
+    [ "pom|delrin",	"mark|eng",	"",		{ "power": 50, 	"speed": 100, "frequency": 5000 } ],
+
+    [ "pet",		"cut",		"^0",		{ "power": 100, "speed": 80, "frequency": 5000 } ],
+    [ "pet",		"mark|eng",	"",		{ "power": 15, 	"speed": 100, "frequency": 5000 } ],
+
+    [ "pappe|papier",	"cut",		"^0",		{ "power": 100, "speed": 80, "frequency": 500 } ],
+    [ "pappe|papier",	"mark|eng",	"",		{ "power": 15, 	"speed": 100, "frequency": 500 } ],
+    [ "pappe",		"cut",		"^2",		{ "power": 100, "speed": 50, "frequency": 500 } ],
+    [ "pappe",		"cut",		"^1",		{ "power": 100, "speed": 80, "frequency": 500 } ],
+    [ "pappe",		"cut",		"^0",		{ "power": 49, "speed": 100, "frequency": 500 } ],
+
+    [ "holz", 		"cut",		"^8",		{ "power": 100, "speed": 10, "frequency": 500 } ],
+    [ "holz", 		"cut",		"^7",		{ "power": 100, "speed": 12, "frequency": 500 } ],
+    [ "holz", 		"cut",		"^6",		{ "power": 100, "speed": 15, "frequency": 500 } ],
+    [ "holz", 		"cut",		"^5",		{ "power": 100, "speed": 17, "frequency": 500 } ],
+    [ "holz", 		"cut",		"^4",		{ "power": 100, "speed": 20, "frequency": 500 } ],
+    [ "holz", 		"cut",		"^3",		{ "power": 100, "speed": 30, "frequency": 500 } ],
+    [ "holz", 		"cut",		"^2",		{ "power": 100, "speed": 40, "frequency": 500 } ],
+    [ "holz", 		"cut",		"^1",		{ "power": 100, "speed": 60, "frequency": 500 } ],
+    [ "holz", 		"cut",		"^0",		{ "power": 100, "speed": 80, "frequency": 500 } ],
+    [ "holz",		"mark|eng",	"",		{ "power": 25, 	"speed": 100, "frequency": 500 } ],
 
     [ "furnier", "cut",		"^[01]",	{ "power": 50, "speed": 100, "frequency": 500 } ],
     [ "furnier", "mark|eng",	"",		{ "power": 20, "speed": 100, "frequency": 500 } ],
 
-    [ "holz",		"mark|eng",	"",		{ "power": 25, 	"speed": 100, "frequency": 500 } ],
-    [ "kraftplex",	"mark|eng",	"",		{ "power": 30, 	"speed": 100, "frequency": 500 } ],
+    [ "kraftplex", 	"cut",		"^3",		{ "power": 100, "speed": 30, "frequency": 2000 } ],
+    [ "kraftplex", 	"cut",		"^2",		{ "power": 100, "speed": 50, "frequency": 2000 } ],
+    [ "kraftplex", 	"cut",		"^1",		{ "power": 100, "speed": 70, "frequency": 2000 } ],
+    [ "kraftplex", 	"cut",		"^0",		{ "power": 60, "speed": 100, "frequency": 2000 } ],
+    [ "kraftplex",	"mark|eng",	"",		{ "power": 30, 	"speed": 100, "frequency": 2000 } ],
 
     [ "mdf",		"cut",	"^[12]",		{ "power": 100, 	"speed": 80, "frequency": 500 } ],
     [ "mdf",		"cut",	"^[34]",		{ "power": 100, 	"speed": 60, "frequency": 500 } ],
@@ -25,8 +57,38 @@
 
   ], 
   "Thunderlaser Nova 35": [
+    [ "acryl", 	"cut",		"^(9|10)",		{ "power": 70, "min_power": 70, "speed": 0.5 } ],
+    [ "acryl", 	"cut",		"^(7|8)",		{ "power": 70, "min_power": 67, "speed": 0.7 } ],
+    [ "acryl", 	"cut",		"^6",			{ "power": 70, "min_power": 70, "speed": 0.8 } ],
+    [ "acryl", 	"cut",		"^5",			{ "power": 70, "min_power": 65, "speed": 1.0 } ],
+    [ "acryl", 	"cut",		"^4",			{ "power": 70, "min_power": 60, "speed": 1.4 } ],
+    [ "acryl", 	"cut",		"^3",			{ "power": 70, "min_power": 55, "speed": 2 } ],
+    [ "acryl", 	"cut",		"^[012]",		{ "power": 70, "min_power": 45, "speed": 4 } ],
+    [ "acryl",	"mark|eng",	"",			{ "power": 20, 	"min_power": 9, "speed": 20 } ],
+
+    [ "hpl( |$)",	"cut",		"^[234]",	{ "power": 70, "min_power": 50, "speed": 2 } ],
+    [ "hpl( |$)",	"cut",		"^[01]",	{ "power": 70, "min_power": 30, "speed": 5 } ],
+    [ "hpl( |$)",	"mark|eng",	"",		{ "power": 35, "min_power": 9, "speed": 20 } ],
+
+    [ "pu( |$)|schaum",	"cut",		"^1[012]",	{ "power": 70, "min_power": 35, "speed": 10 } ],
+    [ "pu( |$)|schaum",	"cut",		"^[6789]",	{ "power": 70, "min_power": 35, "speed": 15 } ],
+    [ "pu( |$)|schaum",	"cut",		"^[12345]",	{ "power": 70, "min_power": 35, "speed": 20 } ],
+    [ "pu( |$)|schaum",	"mark|eng",	"",		{ "power": 20, "min_power": 10, "speed": 80 } ],
+
+    [ "pom|delrin",	"cut",		"^[56]",	{ "power": 70, "min_power": 50, "speed": 0.8 } ],
+    [ "pom|delrin",	"cut",		"^[234]",	{ "power": 70, "min_power": 50, "speed": 1.2 } ],
+    [ "pom|delrin",	"mark|eng",	"",		{ "power": 60, "min_power": 20, "speed": 80 } ],
+
+    [ "pet", 	"cut",		"^0",			{ "power": 70, "min_power": 28, "speed": 15 } ],
+    [ "pet",	"mark|eng",	"",			{ "power": 20, "min_power": 10, "speed": 80 } ],
+
     [ "papier", "cut",		"^0\\.[123]",		{ "power": 40, "min_power": 10, "speed": 25 } ],
     [ "papier",	"mark|eng",	"",			{ "power": 50, 	"min_power": 20, "speed": 80 } ],
+
+    [ "pappe", "cut",		"^2",			{ "power": 70, "min_power": 50, "speed": 6 } ],
+    [ "pappe", "cut",		"^1",			{ "power": 70, "min_power": 35, "speed": 10 } ],
+    [ "pappe", "cut",		"^0",			{ "power": 70, "min_power": 25, "speed": 20 } ],
+    [ "pappe",	"mark|eng",	"",			{ "power": 35, 	"min_power": 9, "speed": 25 } ],
 
     [ "holz", 	"cut",		"^(15|16|17|18)",	{ "power": 70, "min_power": 70, "speed": 0.5 } ],
     [ "holz", 	"cut",		"^(11|12|13|14)",	{ "power": 70, "min_power": 70, "speed": 0.8 } ],
@@ -39,10 +101,15 @@
     [ "holz", 	"cut",		"^2",			{ "power": 70, "min_power": 30, "speed": 6 } ],
     [ "holz", 	"cut",		"^1",			{ "power": 70, "min_power": 20, "speed": 10 } ],
     [ "holz", 	"cut",		"^0",			{ "power": 70, "min_power": 20, "speed": 20 } ],
-
     [ "holz",	"mark|eng",	"^[12][0-9]",		{ "power": 60, 	"min_power": 20, "speed": 80 } ],
     [ "holz",	"mark|eng",	"^[3456789]",		{ "power": 60, 	"min_power": 20, "speed": 80 } ],
     [ "holz",	"mark|eng",	"^[12]",		{ "power": 20, 	"min_power": 10, "speed": 80 } ],
+
+    [ "kraftplex", 	"cut",		"^4",		{ "power": 70, "min_power": 50, "speed": 3 } ],
+    [ "kraftplex", 	"cut",		"^3",		{ "power": 70, "min_power": 30, "speed": 4 } ],
+    [ "kraftplex", 	"cut",		"^2",		{ "power": 70, "min_power": 30, "speed": 6 } ],
+    [ "kraftplex", 	"cut",		"^1",		{ "power": 70, "min_power": 20, "speed": 10 } ],
+    [ "kraftplex",	"mark|eng",	"",		{ "power": 20, 	"min_power": 20, "speed": 80 } ],
 
     [ "mdf",	"cut",		"^[12]",		{ "power": 70, 	"min_power": 30, "speed": 8 } ],
     [ "mdf",	"cut",		"^[34]",		{ "power": 70,	"min_power": 50, "speed": 2.2 } ],

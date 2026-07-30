@@ -186,14 +186,14 @@ def used_laser_profiles(mpd, m, d):
   return plist
 
 
-def create_laserprofile(mpd, material_name, device_name, profile_name, thickness):
-  print(f"clp({material_name}, {device_name}, {profile_name}, {thickness})")
+def create_laserprofile(mpd, material_name, device_name, profile_name, thickness, print_prefix=""):
+  print(f"{print_prefix}clp({material_name}, {device_name}, {profile_name}, {thickness})")
   # plist = used_laser_profiles(mpd, material_name, device_name)
   # if plist:
   #   print(f"clp have plist:", plist)
   #   # raise "create_laserprofile with plist not impl."
   if not "defaults" in mpd:
-    raise "create_laserprofile cannot create profile without defaults."
+    raise f"{print_prefix}create_laserprofile cannot create profile without defaults."
   dlist = mpd['defaults'][device_name]
   for i in range(len(dlist)):
     d = dlist[i]
@@ -203,20 +203,21 @@ def create_laserprofile(mpd, material_name, device_name, profile_name, thickness
     if re.search(d[0], material_name, re.IGNORECASE) and \
        re.search(d[1], profile_name,  re.IGNORECASE) and \
        re.search(d[2], str(thickness),     re.IGNORECASE):
-      print(f"defaults.{device_name}.{i}: match", d)
+      print(f"{print_prefix}defaults.{device_name}.{i}: match", d)
       r = d[3].copy()
       date = datetime.datetime.now().strftime("%Y%m%d")
 
       r['annotations'] = { "source": f"defaults.{device_name}.{i}", "description": "gen "+date }
       return r;
-  print(f"{device_name}: no matching default: ", dlist)
-  raise "create_laserprofile not impl."
+  print(f"{print_prefix}{device_name}: no matching default: ", [[d[0], d[1], d[2]] for d in dlist])
+  raise "{print_prefix}create_laserprofile not impl."
 
 
 def check_profiles(mpd, autofix=True):
   # mpd = { 'materials': m, 'profiles': p, 'devices': l } as generated with collect_profiles
 
   r = []
+  fixcounter = 0
   ### find materials that have no name. (autocreated by profiles, but xml file missing in /materials folder.)
   for n,m in mpd['materials'].items():
     if not 'name' in m:
@@ -244,6 +245,7 @@ def check_profiles(mpd, autofix=True):
         r.append(f"material '{n}': thickness {t} is not used in any laserprofile.")
     for t in tmiss:
       r.append(f"material '{n}': thickness {t} used in laserprofiles, but not listed in thicknesses.")
+      fixcounter = fixcounter + 1
       if autofix:
         m['thicknesses'] = sorted(m['thicknesses'] + [t])
 
@@ -264,8 +266,9 @@ def check_profiles(mpd, autofix=True):
           m['profiles'][d][p] = {}
         for t in ths:
           if not t in m['profiles'][d][p]:
-            if autofix:
-              m['profiles'][d][p][t] = create_laserprofile(mpd, n, d, p, t)
+            fixcounter = fixcounter + 1
             r.append(f"create_laserprofile(mpd, '{n}', '{d}', '{p}', '{t}')")
+            if autofix:
+              m['profiles'][d][p][t] = create_laserprofile(mpd, n, d, p, t, f"{fixcounter}: ")
 
   return r
