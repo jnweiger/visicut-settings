@@ -29,7 +29,8 @@ def collect_materials(dir):
   return r
 
 
-def maybe_float_or_bool(v):
+# CAUTION. Do not use. This looks nice, but spoils md5sums on fmt_laserprofile_xml, fmt_material_xml.
+def _maybe_float_or_bool(v):
   try:
     return float(v)
   except (ValueError, TypeError):
@@ -63,7 +64,7 @@ def decode_xml_name(str):
 
 
 def encode_xml_name(str):
-  return re.sub(r'[^A-Za-z0-9]', lambda m: f"_{ord(m.group(0))}_", str)
+  return re.sub(r'[^A-Za-z0-9-]', lambda m: f"_{ord(m.group(0))}_", str)
 
 
 def collect_profile_details(dir):
@@ -74,7 +75,7 @@ def collect_profile_details(dir):
     # d = { 'vectorProfile': {'DPI': '500.0', 'description': 'rote linie nearest neigbour', 'name': 'cut-nn', 'orderStrategy': 'NEAREST', 'useOutline': 'false', 'isCut': 'true', 'width': '0.2'}}}
     t = list(d.keys())[0]
     d[t]['type'] = t
-    r[d[t]['name']] = { decode_xml_name(k): maybe_float_or_bool(v) for k, v in d[t].items() }
+    r[d[t]['name']] = { decode_xml_name(k): v for k, v in d[t].items() }
   return r
 
 
@@ -87,8 +88,8 @@ def collect_devices(dir):
     #                       "@class": "de.thomas_oster.liblasercut.drivers.Ruida", "baudRate": "921600", "comport": "auto", ... }, "cameraTiming": "0", "projectorTiming": "0", "name": ... } }
     d = list(d.values())[0]
     if 'laserCutter' in d:
-      d['laserCutter'] = { decode_xml_name(k): maybe_float_or_bool(v) for k, v in d['laserCutter'].items() }
-    r[d['name']] = { decode_xml_name(k): maybe_float_or_bool(v) for k, v in d.items() }
+      d['laserCutter'] = { decode_xml_name(k): v for k, v in d['laserCutter'].items() }
+    r[d['name']] = { decode_xml_name(k): v for k, v in d.items() }
   return r
 
 
@@ -122,7 +123,7 @@ def collect_profiles(dir):
     # a = ['Thunderlaser Nova 35', 'Sperrholz Kiefer', '4.0mm', 'cut.xml']
     lp = { 'device': a[0], 'material': a[1], 'thickness': float(a[2].replace("mm", "")), 'profile': a[3].replace(".xml", "") }
     # reduce double __ to _ in names, and convert values to float
-    lp["data"] = { decode_xml_name(k): maybe_float_or_bool(v) for k, v in d.items() }
+    lp["data"] = { decode_xml_name(k): v for k, v in d.items() }
     # {'device': 'Zing', 'material': 'Kraftplex', 'thickness': 1.0, 'profile': 'mark', 'data': {'power': 30.0, 'speed': 100.0, 'focus': 0.0, 'hideFocus': True, 'frequency': 2000.0}}
     # {'device': 'Thunderlaser Nova 35', 'material': 'Eiche Hirnholz', 'thickness': 5.0, 'profile': 'engrave-fs-200-neg', 'data': {'power': 100.0, 'speed': 66.0, 'frequency': 500.0, 'min_power': 10.0}}
     lp["data"]["md5sum"] = hashlib.file_digest(open(p, 'rb'), "md5").hexdigest()
@@ -305,8 +306,74 @@ def fmt_material_xml(name, m):
     cutColor=m.get('cutColor', '#000000'),
     color=m.get('color', '#000000'),
     name=sax.escape(name),
-    thicknesses="\n".join([f"    <float>{t}</float>" for t in th]))
+    thicknesses="\n".join([f"    <float>{t}</float>" for t in th])
+  )
   return xml
+
+
+def fmt_laserprofile_xml(lp):
+  # Kiefernbrettchen Zing cut 5.0 {'power': 100.0, 'speed': 40.0, 'focus': 0.0, 'hideFocus': True, 'frequency': 500.0, 'md5sum': 'ec873e5a7ceaba1bab0eb5ba64cf1a9c', 'annotation': {'description': 'gen 20260729', 'source': '../4.0mm/cut.xml via /tool/vcprofman.py'}}
+  # Sperrholz Kiefer Thunderlaser Nova 35 cut 4.0 {'power': '80.0', 'speed': '1.2', 'frequency': '500', 'min_power': '60.0', 'md5sum': 'af480744149fe7e1f49108e6c60c7df0'}
+  # Sperrholz Birke Zing engrave 3.0 {'power': '100', 'speed': '100', 'focus': '0.0', 'hideFocus': 'true', 'engraveBottomUp': 'false', 'md5sum': 'b0e8b6c85c0629060ecbda3718c1084c'}
+
+
+  template_minmax = """<?xml version="1.0" encoding="UTF-8"?>
+
+<linked-list version="0.0.0.0">
+  <com.t__oster.liblasercut.properties.FloatMinMaxPowerSpeedFrequencyProperty>
+    <power>{power}</power>
+    <speed>{speed}</speed>
+    <frequency>500</frequency>
+    <min__power>{min_power}</min__power>
+  </com.t__oster.liblasercut.properties.FloatMinMaxPowerSpeedFrequencyProperty>
+</linked-list>
+"""
+  template_epilog = """<?xml version="1.0" encoding="UTF-8"?>
+
+<linked-list version="0.0.0.0">
+  <com.t__oster.liblasercut.drivers.EpilogEngraveProperty>
+    <power>{power}</power>
+    <speed>{speed}</speed>
+    <focus>{focus}</focus>
+    <hideFocus>{hideFocus}</hideFocus>
+    <engraveBottomUp>{engraveBottomUp}</engraveBottomUp>
+  </com.t__oster.liblasercut.drivers.EpilogEngraveProperty>
+</linked-list>
+"""
+
+  template = """<?xml version="1.0" encoding="UTF-8"?>
+
+<linked-list version="0.0.0.0">
+  <PowerSpeedFocusFrequencyProperty>
+    <power>{power}</power>
+    <speed>{speed}</speed>
+    <focus>{focus}</focus>
+    <hideFocus>{hideFocus}</hideFocus>
+    <frequency>{frequency}</frequency>
+  </PowerSpeedFocusFrequencyProperty>
+</linked-list>
+"""
+
+  if 'engraveBottomUp' in lp:
+    template = template_epilog
+
+  if 'min_power' in lp:
+    template = template_minmax
+
+  # TODO: both, engraveBottomUp and min_power??
+
+  xml = template.format(
+    power=lp['power'],
+    speed=lp['speed'],
+    min_power=lp.get('min_power', 0),
+    frequency=lp.get('frequency', 500),
+    focus=lp.get('focus', 0.0),
+    hideFocus=lp.get('hideFocus', 'true'),
+    engraveBottomUp=lp.get('engraveBottomUp', 'false')
+  )
+  if 'annotation' in lp:
+    return xml, json.dumps(lp['annotation'])
+  return xml, None
 
 
 def write_xml(mpd, dir, noop=False, orig_suffix=""):
@@ -317,17 +384,57 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
     mat_xml = fmt_material_xml(name, mat)
     md5 = hashlib.md5(mat_xml.encode("utf-8")).hexdigest()
     if not 'md5sum' in mat or md5 != mat['md5sum']:
+
+      if not noop:
+        filename = f"{dir}/materials/{encode_xml_name(name)}.xml"
+        if os.path.exists(filename) and orig_suffix:
+          os.rename(filename, filename+orig_suffix)
+        with open(filename, "wb") as f:
+          f.write(mat_xml.encode("utf-8"))
+
       if not 'md5sum' in mat:
         print(f"new: material {name} ==============================\n", mat_xml)
         stats['added'] += 1
       else:
         print(f"\nchanged: material {name} ==============================\n", mat_xml)
         stats['changed'] += 1
+
     else:
       # print("\nmd5sum unchanged:", name)
       stats['same'] += 1
 
-  ## write "laserprofiles/**.xml"
+  ## write "laserprofiles/**.xml" (and collect annotations)
+  anno = {}
+  for n,m in mpd['materials'].items():
+    for d in m['profiles']:
+      for p in m['profiles'][d]:
+        for t in m['profiles'][d][p]:
+          print(n,d,p,t, m['profiles'][d][p][t])
+          name = f"laserprofiles/{encode_xml_name(d)}/{encode_xml_name(n)}/{t}mm/{encode_xml_name(p)}.xml"
+          lp = m['profiles'][d][p][t]
+          lp_xml, anno[name] = fmt_laserprofile_xml(lp)
+          # print(name, lp_xml, anno[name])
+          md5 = hashlib.md5(lp_xml.encode("utf-8")).hexdigest()
+          if not 'md5sum' in lp or md5 != lp['md5sum']:
+
+            if not noop:
+              filename = f"{dir}/{name}"
+              if os.path.exists(filename) and orig_suffix:
+                os.rename(filename, filename+orig_suffix)
+              with open(filename, "wb") as f:
+                f.write(lp_xml.encode("utf-8"))
+
+            if not 'md5sum' in lp:
+              print(f"new: {name} ==============================\n", lp_xml)
+              stats['added'] += 1
+            else:
+              print(f"\nchanged: {name} ==============================\n", lp_xml, md5, lp['md5sum'])
+              stats['changed'] += 1
+
+          else:
+            # print("\nmd5sum unchanged:", name)
+            stats['same'] += 1
+
   ## write "annotations.json"
 
   print("write_xml: unfinsihed code.", file=sys.stderr)
