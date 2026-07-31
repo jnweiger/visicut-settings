@@ -1,7 +1,8 @@
 #! /usr/bin/python
 #
-# parse_xml.py - read the visicut settings tree of XML files
+# vcsetman.py - manage visicut settings, native XML data and Wiki tables
 #
+# (C) 2026, juergen@fabmail.org
 
 
 import os, sys, json
