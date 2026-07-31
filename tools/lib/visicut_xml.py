@@ -5,8 +5,9 @@
 # (C) 2026, juergen@fabmail.org
 
 
-import re, xmltodict, json, pathlib
-import datetime
+import sys, pathlib, json, re, xmltodict
+import datetime, hashlib
+import xml.sax.saxutils as sax
 
 
 def collect_materials(dir):
@@ -21,8 +22,9 @@ def collect_materials(dir):
   for m in mdir.glob("*.xml"):
     d = xmltodict.parse(open(m, 'rb'), xml_attribs=False, force_list=('float',))
     d = d['material']
-    d['thicknesses'] = [float(t) for t in sorted(d['materialThicknesses']['float'])]
+    d['thicknesses'] = [float(t) for t in d['materialThicknesses']['float']]
     del(d['materialThicknesses'])
+    d['md5sum'] = hashlib.file_digest(open(m, 'rb'), "md5").hexdigest()
     r[d['name']] = d
   return r
 
@@ -123,6 +125,7 @@ def collect_profiles(dir):
     lp["data"] = { decode_xml_name(k): maybe_float_or_bool(v) for k, v in d.items() }
     # {'device': 'Zing', 'material': 'Kraftplex', 'thickness': 1.0, 'profile': 'mark', 'data': {'power': 30.0, 'speed': 100.0, 'focus': 0.0, 'hideFocus': True, 'frequency': 2000.0}}
     # {'device': 'Thunderlaser Nova 35', 'material': 'Eiche Hirnholz', 'thickness': 5.0, 'profile': 'engrave-fs-200-neg', 'data': {'power': 100.0, 'speed': 66.0, 'frequency': 500.0, 'min_power': 10.0}}
+    lp["data"]["md5sum"] = hashlib.file_digest(open(p, 'rb'), "md5").hexdigest()
     if str(rpath) in anno:
         lp["data"]["annotation"] = anno[str(rpath)]
 
@@ -224,6 +227,7 @@ def check_profiles(mpd, autofix=True):
       r.append(f"material '{n}' used in laserprofiles, but materials/{encode_xml_name(n)}.xml is missing.")
       if autofix:
         m['name'] = n
+        fixcounter = fixcounter + 1
     if not 'thicknesses' in m:
       m['thicknesses'] = []
 
@@ -272,3 +276,60 @@ def check_profiles(mpd, autofix=True):
               m['profiles'][d][p][t] = create_laserprofile(mpd, n, d, p, t, f"{fixcounter}: ")
 
   return r
+
+####
+
+def fmt_material_xml(name, m):
+  # m = {"engraveColor": "#000000", "cutColor": "#ff0000", "color": "#fff0b4", "name": "Sperrholz Kiefer", "thicknesses": [4.0], "md5sum": "75428bee39c6fef42a2f3c7b3f3c381c", ... }
+  th = m.get('thicknesses', [])
+  description_opt=""
+  if 'description' in m:
+    description_opt=f"\n  <description>{sax.escape(m['description'])}</description>"
+
+  # Maybe we need multiple templates to support multiple visicut versions?
+  template = """<?xml version="1.0" encoding="UTF-8"?>
+
+<material version="0">{description_opt}
+  <engraveColor>{engraveColor}</engraveColor>
+  <cutColor>{cutColor}</cutColor>
+  <color>{color}</color>
+  <name>{name}</name>
+  <materialThicknesses>
+{thicknesses}
+  </materialThicknesses>
+</material>
+"""
+  xml = template.format(
+    description_opt=description_opt,
+    engraveColor=m.get('engraveColor', '#000000'),
+    cutColor=m.get('cutColor', '#000000'),
+    color=m.get('color', '#000000'),
+    name=sax.escape(name),
+    thicknesses="\n".join([f"    <float>{t}</float>" for t in th]))
+  return xml
+
+
+def write_xml(mpd, dir, noop=False, orig_suffix=""):
+  stats = { "same": 0, "added": 0, "changed": 0 }
+
+  ## write "materials/*.xml"
+  for name, mat in mpd['materials'].items():
+    mat_xml = fmt_material_xml(name, mat)
+    md5 = hashlib.md5(mat_xml.encode("utf-8")).hexdigest()
+    if not 'md5sum' in mat or md5 != mat['md5sum']:
+      if not 'md5sum' in mat:
+        print(f"new: material {name} ==============================\n", mat_xml)
+        stats['added'] += 1
+      else:
+        print(f"\nchanged: material {name} ==============================\n", mat_xml)
+        stats['changed'] += 1
+    else:
+      # print("\nmd5sum unchanged:", name)
+      stats['same'] += 1
+
+  ## write "laserprofiles/**.xml"
+  ## write "annotations.json"
+
+  print("write_xml: unfinsihed code.", file=sys.stderr)
+  return stats
+
