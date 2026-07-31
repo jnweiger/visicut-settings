@@ -11,6 +11,7 @@ LIB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib')
 sys.path.insert(0, LIB_DIR)
 
 from visicut_xml import *
+from wiki_markdown_table import *
 
 
 if __name__ == "__main__":
