@@ -2,19 +2,22 @@
 #
 # parse_md_table.py - read a raw wiki page, and find tables.
 #
-# Use with 
+# Use with
 # https://wiki.fablab-nuernberg.de/w/Nova_35?action=raw
 
 import sys, json
 
 
-def collect_tables(mdfile):
+def collect_tables(fd):
   r = []
   lastheading = None
   lineno = 0
   intable = False
-  
-  for line in open(mdfile, "r").readlines():
+
+  # FIXME: do we need .decode("utf-8") here?
+  for line in fd.readlines():
+    if type(line) != type(""):
+      line = line.decode("utf-8")   # urlopen() brings us str
     line = line.strip()
     lineno = lineno + 1
     if line.startswith('=') and line.endswith('='):
@@ -83,9 +86,9 @@ def mdlines2lists(mdlines):
   return(tr,th)
 
 
-def list_tables(file):
-  table_list = collect_tables(file)
-  
+def list_tables(fd):
+  table_list = collect_tables(fd)
+
   for table in table_list:
     tr, th = mdlines2lists(table['md_lines'])
     table['tr'] = tr
@@ -93,8 +96,9 @@ def list_tables(file):
     del(table['md_lines'])
 
   return table_list
-  
+
 
 if __name__ == "__main__":
-  table_list = list_tables(sys.argv[1])
+  with open(sys.argv[1], "r") as fd:
+    table_list = list_tables(fd)
   print(json.dumps(table_list))
