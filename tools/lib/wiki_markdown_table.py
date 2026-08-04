@@ -6,6 +6,7 @@
 # https://wiki.fablab-nuernberg.de/w/Nova_35?action=raw
 
 import sys, json
+import html
 
 
 def collect_tables(fd):
@@ -58,7 +59,12 @@ def mdlines2lists(mdlines):
 
     if line[0] == '|':
       # print("tr: " + line)
-      cols = [col.strip() for col in line[1:].split("||")]
+      cols = []
+      for col in line[1:].split("||"):
+        if "|" in col:
+          col = col[col.index('|')+1:]  # skip cell attributes like e.g. style="..." | 
+        cols.append(html.unescape(col.strip()))     # strip whitespace at both ends and interpolate html sequences like &#124;
+
       if newline == True:
         tr.append(cols)
       else:
@@ -72,7 +78,11 @@ def mdlines2lists(mdlines):
 
     if line[0] == '!':
       # print("th: " + line)
-      cols = [col.strip() for col in line[1:].split("!!")]
+      cols = []
+      for col in line[1:].split("!!"):
+        if "|" in col:
+          col = col[col.index('|')+1:]              # skip cell attributes like e.g. style="..." | 
+        cols.append(html.unescape(col.strip()))     # strip whitespace at both ends and interpolate html sequences like &#124;
       if newline == True:
         th.append(cols)
       else:

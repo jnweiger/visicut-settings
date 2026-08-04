@@ -12,7 +12,7 @@ Zum anderen Laser [[ZING_4030#Schneiden:_CUT_-_.28.22Rote_Linie.22.29|(Epilog Zi
 {| class="wikitable"
 |-
 | Arbeitsbereich ||style="text-align:right"| 900 x 600 mm
-| zweite Zeile || || bam
+| zweite Zeile || || bam&#124;bum
 |-
 | Tischfläche ||style="text-align:right"| 1000 x 730 mm
 |-

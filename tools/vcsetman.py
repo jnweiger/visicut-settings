@@ -33,13 +33,13 @@ def main():
     list_parser = subparsers.add_parser("list", aliases=["l"], help="print laserdevices, materials, and profiles found in the XML files of the settings directory.")
     list_parser.add_argument("filter", metavar="l|m|p|lp", nargs="?", choices=("all", "l", "lasers", "d", "devices", "n", "names", "m", "materials", "p", "profiles", "lp", "laserprofiles", "g", "gen", "generator"), default="all", help="optional filter to not print everything: lasers, materials, profiles")
 
-    import_parser = subparsers.add_parser("import", aliases=["i"], help="Process external data, such as wiki tables or json exports.")
-    import_parser.add_argument("source", metavar="file.md|URL", help="wiki url or wiki markdown file to import. Use -o ... to create new xml settings for later 'compare' or 'merge'.")
-    import_parser.add_argument("-l", "--laser-name", metavar="DEVICE", help="specfy the name of the laser to import. Default: guess from the filename or URL.")
-
     check_parser = subparsers.add_parser("check", aliases=["c"], help="Report inconsistencies of visicut profiles. E.g. unused materials, unused thickness, material profiles only defined for one laser, or only defined for cut or engrave.")
     check_parser.add_argument("-f", "--fix", action="store_true", help="Fill in missing entries.")
     check_parser.add_argument("-g", "--gen", "--generator-file", type=str, help="Specify the generator file used for fixing. This implies --fix. Default: SETTINGS_DIR/laserprofiles/generator.json")
+
+    import_parser = subparsers.add_parser("import", aliases=["i"], help="Process external data, such as wiki tables or json exports.")
+    import_parser.add_argument("source", metavar="file.md|URL", help="wiki url or wiki markdown file to import. Use -o ... to create new xml settings for later 'compare' or 'merge'.")
+    import_parser.add_argument("-l", "--laser-name", metavar="DEVICE", help="specfy the name of the laser to import. Default: guess from the filename or URL.")
 
     export_parser = subparsers.add_parser("export", aliases=["e"], help="produce a wiki markdown file with tables.")
     export_parser.add_argument("name", metavar="LASER", nargs="?", help="Specify which laser to export. Default: All laser devices, one file per laser.")
@@ -48,8 +48,12 @@ def main():
 
     merge_parser = subparsers.add_parser("merge", aliases=["m"], help="Combine two settings into one.")
     merge_parser.add_argument("name", help="Specify the other directory to merge with.")
-    merge_parser.add_argument("-o", "--overwrite", action="store_true",  help="My settings are overwritten by conflicting settings from other directory. Default: preserve my settings, skip conflicts.")
-    merge_parser.add_argument("-c", "--conflict", action="store_true",  help="Report conflicts and abort, if any. Default: preserve my settings, skip conflicts.")
+    merge_parser.add_argument("-O", "--overwrite", action="store_true",  help="My settings are overwritten by conflicting settings from other directory. Default: preserve my settings, skip conflicts.")
+    merge_parser.add_argument("-C", "--conflict", action="store_true",  help="Report conflicts and abort, if any. Default: preserve my settings, skip conflicts.")
+
+    rename_parser = subparsers.add_parser("rename", aliases=["r"], help="rename laser device, profile, or material.")
+    rename_parser.add_argument("oldname", help="Name of an existing laser, material or profile. Which of the three is autodetected.")
+    rename_parser.add_argument("newname", help="")
 
     args = parser.parse_args()
     if args.command is None:     # add_subparsers(..., required=True) in modern python.
@@ -63,6 +67,7 @@ def main():
       print(f"... reading {args.settings_dir}", file=sys.stderr)
     mpd = collect_profiles(args.settings_dir)
 
+    ############################
     if args.command in ("list"):
       filt = None
       if args.filter in ("l", "d", "n", "laser", "lasers", "dev", "device", "devices", "name", "names"):
@@ -88,6 +93,7 @@ def main():
         print(json.dumps(mpd))
       sys.exit(0)
 
+    ############################
     if args.command in ("check"):
       if not args.noop:
         stats = write_xml(mpd, args.output_dir, noop=True)
@@ -106,6 +112,7 @@ def main():
           print(stats)
       sys.exit(0)
 
+    ############################
     if args.command in ("import"):
       if not args.laser_name:
         if "://" in args.source:    # oh, its an url.
@@ -124,7 +131,27 @@ def main():
         with open(args.source, "r") as fd:
           table_list = list_tables(fd)
       print(json.dumps(table_list))
+      imp = import_from_tables(table_list, args.laser_name, args.source)
+      print(json.dumps(imp))
       sys.exit(0)
+
+    ############################
+    if args.command in ("export"):
+      print(f"{args.command} not impl.", file=sys.stderr)
+      sys.exit(0)
+
+    ############################
+    if args.command in ("merge"):
+      print(f"{args.command} not impl.", file=sys.stderr)
+      sys.exit(0)
+
+    ############################
+    if args.command in ("rename"):
+      print(f"{args.command} not impl.", file=sys.stderr)
+      sys.exit(0)
+
+    print(f"ERROR: unknown command {args.command}.", file=sys.stderr)
+    sys.exit(0)
 
 
 if __name__ == "__main__":
