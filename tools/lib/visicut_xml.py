@@ -8,6 +8,7 @@
 import os, sys, pathlib, json, re, xmltodict
 import datetime, hashlib
 import xml.sax.saxutils as sax
+from copy import deepcopy
 
 
 def collect_materials(dir):
@@ -488,7 +489,25 @@ def fmt_laserprofile_xml(lp):
   return xml, None
 
 
-def fmt_profile_xml(name, p):
+def _merge_defaults(obj, defaults):
+  a = deepcopy(obj)
+  for k,v in defaults.items():
+    if not k in a:
+      a[k] = deepcopy(defaults[k])
+  return a
+
+
+def xml_escape_values(obj, defaults={}):
+  a = _merge_defaults(obj, defaults)
+  for k,v in a.items():
+    if   type(v) == type(""): a[k] = sax.escape(v)
+    elif type(v) == type({}): a[k] = xml_escape_values(v, defaults.get(k, {}))
+    elif      v  is True:     a[k] = 'true'
+    elif      v  is False:    a[k] = 'false'
+  return a
+
+
+def fmt_profile_xml(pname, p):
   # cut, p = { "version": 0.0, "DPI": 500.0, "description": "rote Linie", "name": "cut", "orderStrategy": "INNER_FIRST", "useOutline": false, "isCut": true, "width": 0.2, "type": "vectorProfile" }
   # mark, p = { "version": 0.0, "DPI": 500.0, "description": "A new Laserprofile", "name": "mark", "orderStrategy": "NEAREST", "useOutline": false, "isCut": false, "width": 0.1, "type": "vectorProfile" },
   # eng, p = { "version": 0.0, "DPI": 500.0, "description": "A new Laserprofile", "name": "eng-fs-500", "invertColors": false, "colorShift": 0.0, "ditherAlgorithm": { "progress": "0", "class": "de.thomas_oster.liblasercut.dithering.FloydSteinberg" }, "type": "rasterProfile" }
@@ -496,12 +515,12 @@ def fmt_profile_xml(name, p):
 
   ptype = p.get('type', None)
   if not ptype: # try to guess from name
-    if 'eng' in name.lower():
-      if '3d' in name.lower() or '3 d' in name.lower():
+    if 'eng' in pname.lower():
+      if '3d' in pname.lower() or '3 d' in pname.lower():
         ptype = 'raster3dProfile'
       else:
         ptype = 'rasterProfile'
-    elif 'cut' in name.lower() or 'mark' in name.lower():
+    elif 'cut' in pname.lower() or 'mark' in pname.lower():
       ptype = 'vectorProfile'
     else:
       raise ValueError(f"fmt_profile_xml({name}, p) -> 'type' missing and guessing failed.")
@@ -515,36 +534,36 @@ def fmt_profile_xml(name, p):
   template = """<?xml version="1.0" encoding="UTF-8"?>
 
 <vectorProfile version="0.0">
-  <DPI>500.0</DPI>
-  <description>rote linie nearest neigbour</description>
-  <name>cut-nn</name>
-  <orderStrategy>NEAREST</orderStrategy>
-  <useOutline>false</useOutline>
-  <isCut>true</isCut>
-  <width>0.2</width>
+  <DPI>{DPI}</DPI>
+  <description>{description}</description>
+  <name>{name}</name>
+  <orderStrategy>{orderStrategy}</orderStrategy>
+  <useOutline>{useOutline}</useOutline>
+  <isCut>{isCut}</isCut>
+  <width>{width}</width>
 </vectorProfile>
 """
   template_raster = """<?xml version="1.0" encoding="UTF-8"?>
 
 <rasterProfile version="0.0">
-  <DPI>200.0</DPI>
-  <description>A new Laserprofile</description>
-  <name>eng-fs-200-neg</name>
-  <invertColors>true</invertColors>
-  <colorShift>-30</colorShift>
-  <ditherAlgorithm class="de.thomas_oster.liblasercut.dithering.FloydSteinberg">
-    <progress>0</progress>
+  <DPI>{DPI}</DPI>
+  <description>{description}</description>
+  <name>{name}</name>
+  <invertColors>{invertColors}</invertColors>
+  <colorShift>{colorShift}</colorShift>
+  <ditherAlgorithm class="{ditherAlgorithm[class]}">
+    <progress>{ditherAlgorithm[progress]}</progress>
   </ditherAlgorithm>
 </rasterProfile>
 """
   template_raster3d = """<?xml version="1.0" encoding="UTF-8"?>
 
 <raster3dProfile version="0.0">
-  <DPI>500.0</DPI>
-  <description>deep engrave</description>
-  <name>engrave 3d</name>
-  <invertColors>false</invertColors>
-  <colorShift>0</colorShift>
+  <DPI>{DPI}</DPI>
+  <description>{description}</description>
+  <name>{name}</name>
+  <invertColors>{invertColors}</invertColors>
+  <colorShift>{colorShift}</colorShift>
 </raster3dProfile>
 """
 
@@ -566,6 +585,7 @@ def fmt_profile_xml(name, p):
   elif ptype != 'vectorProfile':
     raise ValueError(f"fmt_profile_xml({name}, unknown type='{ptype}'")
 
+  return template.format_map(xml_escape_values(p, { "DPI": 500.0, "description": "", "orderStrategy": "INNER_FIRST", "useOutline": False, "isCut": True, "width": 0.2, "invertColors": False, "colorShift": 0.0, "ditherAlgorithm": { "progress": "0", "class": "de.thomas_oster.liblasercut.dithering.FloydSteinberg" } }))
   
 
 
