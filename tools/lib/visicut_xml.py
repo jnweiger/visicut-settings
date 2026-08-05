@@ -5,7 +5,7 @@
 # (C) 2026, juergen@fabmail.org
 
 
-import sys, pathlib, json, re, xmltodict
+import os, sys, pathlib, json, re, xmltodict
 import datetime, hashlib
 import xml.sax.saxutils as sax
 
@@ -191,7 +191,7 @@ def used_laser_profiles(mpd, m, d):
 
 
 def generate_laserprofile(mpd, material_name, device_name, profile_name, thickness, print_prefix=""):
-  print(f"{print_prefix}clp({material_name}, {device_name}, {profile_name}, {thickness})")
+  print(f"{print_prefix}clp({material_name}, {device_name}, {profile_name}, {thickness})", file=sys.stderr)
   # plist = used_laser_profiles(mpd, material_name, device_name)
   # if plist:
   #   print(f"clp have plist:", plist)
@@ -207,14 +207,14 @@ def generate_laserprofile(mpd, material_name, device_name, profile_name, thickne
     if re.search(d[0], material_name, re.IGNORECASE) and \
        re.search(d[1], profile_name,  re.IGNORECASE) and \
        re.search(d[2], str(thickness),     re.IGNORECASE):
-      print(f"{print_prefix}generator.{device_name}.{i}: match", d)
+      print(f"{print_prefix}generator.{device_name}.{i}: match", d, file=sys.stderr)
       r = d[3].copy()
       date = datetime.datetime.now().strftime("%Y%m%d")
 
       r['annotations'] = { "source": f"generator.{device_name}.{i}", "description": "gen "+date }
       return r;
-  print(f"{print_prefix}{device_name}: no matching default: ", [[d[0], d[1], d[2]] for d in dlist])
-  raise "{print_prefix}generate_laserprofile not impl."
+  print(f"{print_prefix}{device_name}: no matching default: ", [[d[0], d[1], d[2]] for d in dlist], file=sys.stderr)
+  raise ValueError(f"{print_prefix}generate_laserprofile failed.")
 
 
 def _guess_profile(line):
@@ -488,67 +488,177 @@ def fmt_laserprofile_xml(lp):
   return xml, None
 
 
+def fmt_profile_xml(name, p):
+  # cut, p = { "version": 0.0, "DPI": 500.0, "description": "rote Linie", "name": "cut", "orderStrategy": "INNER_FIRST", "useOutline": false, "isCut": true, "width": 0.2, "type": "vectorProfile" }
+  # mark, p = { "version": 0.0, "DPI": 500.0, "description": "A new Laserprofile", "name": "mark", "orderStrategy": "NEAREST", "useOutline": false, "isCut": false, "width": 0.1, "type": "vectorProfile" },
+  # eng, p = { "version": 0.0, "DPI": 500.0, "description": "A new Laserprofile", "name": "eng-fs-500", "invertColors": false, "colorShift": 0.0, "ditherAlgorithm": { "progress": "0", "class": "de.thomas_oster.liblasercut.dithering.FloydSteinberg" }, "type": "rasterProfile" }
+  # eng3d, p = { "version": 0.0, "DPI": 500.0, "description": "deep engrave", "name": "engrave 3d", "invertColors": false, "colorShift": 0.0, "type": "raster3dProfile" },
+
+  ptype = p.get('type', None)
+  if not ptype: # try to guess from name
+    if 'eng' in name.lower():
+      if '3d' in name.lower() or '3 d' in name.lower():
+        ptype = 'raster3dProfile'
+      else:
+        ptype = 'rasterProfile'
+    elif 'cut' in name.lower() or 'mark' in name.lower():
+      ptype = 'vectorProfile'
+    else:
+      raise ValueError(f"fmt_profile_xml({name}, p) -> 'type' missing and guessing failed.")
+  if ptype == 'rasterProfile':
+    template = template_raster
+  elif ptype == 'raster3dProfile':
+    template = template_raster3d
+  elif ptype != 'vectorProfile':
+    raise ValueError(f"fmt_profile_xml({name}, unknown type='{ptype}'")
+
+  template = """<?xml version="1.0" encoding="UTF-8"?>
+
+<vectorProfile version="0.0">
+  <DPI>500.0</DPI>
+  <description>rote linie nearest neigbour</description>
+  <name>cut-nn</name>
+  <orderStrategy>NEAREST</orderStrategy>
+  <useOutline>false</useOutline>
+  <isCut>true</isCut>
+  <width>0.2</width>
+</vectorProfile>
+"""
+  template_raster = """<?xml version="1.0" encoding="UTF-8"?>
+
+<rasterProfile version="0.0">
+  <DPI>200.0</DPI>
+  <description>A new Laserprofile</description>
+  <name>eng-fs-200-neg</name>
+  <invertColors>true</invertColors>
+  <colorShift>-30</colorShift>
+  <ditherAlgorithm class="de.thomas_oster.liblasercut.dithering.FloydSteinberg">
+    <progress>0</progress>
+  </ditherAlgorithm>
+</rasterProfile>
+"""
+  template_raster3d = """<?xml version="1.0" encoding="UTF-8"?>
+
+<raster3dProfile version="0.0">
+  <DPI>500.0</DPI>
+  <description>deep engrave</description>
+  <name>engrave 3d</name>
+  <invertColors>false</invertColors>
+  <colorShift>0</colorShift>
+</raster3dProfile>
+"""
+
+  ptype = p.get('type', None)
+  if not ptype: # try to guess from name
+    if 'eng' in name.lower():
+      if '3d' in name.lower() or '3 d' in name.lower():
+        ptype = 'raster3dProfile'
+      else:
+        ptype = 'rasterProfile'
+    elif 'cut' in name.lower() or 'mark' in name.lower():
+      ptype = 'vectorProfile'
+    else:
+      raise ValueError(f"fmt_profile_xml({name}, p) -> 'type' missing and guessing failed.")
+  if ptype == 'rasterProfile':
+    template = template_raster
+  elif ptype == 'raster3dProfile':
+    template = template_raster3d
+  elif ptype != 'vectorProfile':
+    raise ValueError(f"fmt_profile_xml({name}, unknown type='{ptype}'")
+
+  
+
+
+def _mkdir_pf(file):
+  # create all the needed directory components that lead up to but not including the file itself.
+  # To create a directory use _mkdir_pf(dir+"/.")
+  l = file.split("/")
+  for i in range(1, len(l)):
+    p = "/".join(l[:i])
+    if p != "":
+      if not os.path.exists(p):
+        os.mkdir(p)
+
+
 def write_xml(mpd, dir, noop=False, orig_suffix=""):
   stats = { "same": 0, "added": 0, "changed": 0 }
 
   ## write "materials/*.xml"
+  print(f"... writing to {dir}/materials/*.xml ...", file=sys.stderr)
+
   for name, mat in mpd['materials'].items():
     mat_xml = fmt_material_xml(name, mat)
     md5 = hashlib.md5(mat_xml.encode("utf-8")).hexdigest()
-    if not 'md5sum' in mat or md5 != mat['md5sum']:
+    filename = f"{dir}/materials/{encode_xml_name(name)}.xml"
+    missing = not os.path.exists(filename)
+    if not 'md5sum' in mat or md5 != mat['md5sum'] or missing:
 
       if not noop:
-        filename = f"{dir}/materials/{encode_xml_name(name)}.xml"
+        # print(json.dumps({'filename': filename }))
+        _mkdir_pf(filename)
         if os.path.exists(filename) and orig_suffix:
           os.rename(filename, filename+orig_suffix)
         with open(filename, "wb") as f:
           f.write(mat_xml.encode("utf-8"))
 
       if not 'md5sum' in mat:
-        print(f"new: material {name} ==============================\n", mat_xml)
+        print(f"written new: {filename}", file=sys.stderr)
         stats['added'] += 1
-      else:
-        print(f"\nchanged: material {name} ==============================\n", mat_xml)
+      elif md5 != mat['md5sum']:
+        print(f"written changed: {filename}", file=sys.stderr)
         stats['changed'] += 1
+      else:
+        print(f"writtem unchanged: {filename}", file=sys.stderr)
+        stats['same'] += 1
 
     else:
-      # print("\nmd5sum unchanged:", name)
+      print(f"unchanged: {filename}", file=sys.stderr)
       stats['same'] += 1
 
   ## write "laserprofiles/**.xml" (and collect annotations)
+  print(f"... writing to {dir}/laserprofiles/**.xml ...", file=sys.stderr)
   anno = {}
   for n,m in mpd['materials'].items():
     for d in m['profiles']:
       for p in m['profiles'][d]:
         for t in m['profiles'][d][p]:
-          print(n,d,p,t, m['profiles'][d][p][t])
+          print(n,d,p,t, m['profiles'][d][p][t], file=sys.stderr)
           name = f"laserprofiles/{encode_xml_name(d)}/{encode_xml_name(n)}/{t}mm/{encode_xml_name(p)}.xml"
           lp = m['profiles'][d][p][t]
           lp_xml, anno[name] = fmt_laserprofile_xml(lp)
           # print(name, lp_xml, anno[name])
+          filename = f"{dir}/{name}"
+          missing = not os.path.exists(filename)
           md5 = hashlib.md5(lp_xml.encode("utf-8")).hexdigest()
-          if not 'md5sum' in lp or md5 != lp['md5sum']:
+          if not 'md5sum' in lp or md5 != lp['md5sum'] or missing:
 
             if not noop:
-              filename = f"{dir}/{name}"
+              _mkdir_pf(filename)
               if os.path.exists(filename) and orig_suffix:
                 os.rename(filename, filename+orig_suffix)
               with open(filename, "wb") as f:
                 f.write(lp_xml.encode("utf-8"))
 
             if not 'md5sum' in lp:
-              print(f"new: {name} ==============================\n", lp_xml)
+              print(f"written new: {filename}",  file=sys.stderr)
               stats['added'] += 1
-            else:
-              print(f"\nchanged: {name} ==============================\n", lp_xml, md5, lp['md5sum'])
+            elif md5 != lp['md5sum']:
+              print(f"written changed: {filename}", md5, lp['md5sum'], file=sys.stderr)
               stats['changed'] += 1
+            else:
+              print(f"writtem unchanged: {filename}", file=sys.stderr)
+              stats['same'] += 1
 
           else:
-            # print("\nmd5sum unchanged:", name)
+            print(f"unchanged: {filename}", file=sys.stderr)
             stats['same'] += 1
 
-  ## write "annotations.json"
+  ## write "profiles/*.xml
+  print(f"TODO: ... writing {dir}/profiles/*.xml ...", file=sys.stderr)
 
-  print("write_xml: unfinsihed code.", file=sys.stderr)
+  ## write "laserprofiles/annotations.json"
+  print(f"TODO: ... writing {dir}/laserprofiles/annotations.json ...", file=sys.stderr)
+
+  print("FIXME: write_xml: unfinsihed code.", file=sys.stderr)
   return stats
 

@@ -25,7 +25,6 @@ def main():
     parser.add_argument("-d", "--settings-dir", metavar="DIR", default=def_settings_dir, help="My Visicut settings directory. Default ~/.visicut")
     parser.add_argument("-n", "--noop", action="store_true", help="Prevent an changes. Default: write or update settings when needed.")
     parser.add_argument("-v", "--verbose", action="store_true", help="Report more details.")
-    parser.add_argument("-o", "--output-dir", metavar="OUTDIR", help="Output directory, if writing settings. Default: write inplace in my settings directory.")
     parser.add_argument("-b", "--backup", action="store_true", help="Backup files with '.orig' suffix before overwriting. Default: No backup.") 
 
     subparsers = parser.add_subparsers(title="Available sub commands", metavar="COMMAND", dest="command", required=True)
@@ -36,10 +35,12 @@ def main():
     check_parser = subparsers.add_parser("check", aliases=["c"], help="Report inconsistencies of visicut profiles. E.g. unused materials, unused thickness, material profiles only defined for one laser, or only defined for cut or engrave.")
     check_parser.add_argument("-f", "--fix", action="store_true", help="Fill in missing entries.")
     check_parser.add_argument("-g", "--gen", "--generator-file", type=str, help="Specify the generator file used for fixing. This implies --fix. Default: SETTINGS_DIR/laserprofiles/generator.json")
+    check_parser.add_argument("-o", "--output-dir", metavar="OUTDIR", help="Output directory, if writing settings. Default: write inplace in my settings directory.")
 
     import_parser = subparsers.add_parser("import", aliases=["i"], help="Process external data, such as wiki tables or json exports.")
     import_parser.add_argument("source", metavar="file.md|URL", help="wiki url or wiki markdown file to import. Use -o ... to create new xml settings for later 'compare' or 'merge'.")
     import_parser.add_argument("-l", "--laser-name", metavar="DEVICE", help="specfy the name of the laser to import. Default: guess from the filename or URL.")
+    import_parser.add_argument("-o", "--output-dir", metavar="OUTDIR", help="Output directory, if writing settings. Default: write inplace in my settings directory.")
 
     export_parser = subparsers.add_parser("export", aliases=["e"], help="produce a wiki markdown file with tables.")
     export_parser.add_argument("name", metavar="LASER", nargs="?", help="Specify which laser to export. Default: All laser devices, one file per laser.")
@@ -50,6 +51,7 @@ def main():
     merge_parser.add_argument("name", help="Specify the other directory to merge with.")
     merge_parser.add_argument("-O", "--overwrite", action="store_true",  help="My settings are overwritten by conflicting settings from other directory. Default: preserve my settings, skip conflicts.")
     merge_parser.add_argument("-C", "--conflict", action="store_true",  help="Report conflicts and abort, if any. Default: preserve my settings, skip conflicts.")
+    merge_parser.add_argument("-o", "--output-dir", metavar="OUTDIR", help="Output directory, if writing settings. Default: write inplace in my settings directory.")
 
     rename_parser = subparsers.add_parser("rename", aliases=["r"], help="rename laser device, profile, or material.")
     rename_parser.add_argument("oldname", help="Name of an existing laser, material or profile. Which of the three is autodetected.")
@@ -101,11 +103,22 @@ def main():
           print("INTERNAL ERROR: write_xml would produce changes on unchanged data: ", stats, file=sys.stderr)
           sys.exit(0)
 
-      print(json.dumps(check_profiles(mpd, autofix=args.fix)))
+      result = check_profiles(mpd, autofix=False)
+      if args.verbose:
+        for change in result:
+          print(change)
+      else:
+        print(f"check found {len(result)} issues.", file=sys.stderr)
+        if len(result):
+          print("Use --verbose check to list them all.", file=sys.stderr)
+
       if args.fix:
-        remainder = check_profiles(mpd, autofix=args.fix)
+        res2 = check_profiles(mpd, autofix=True)
+        if len(result) > len(res2):
+          raise ValueError(f"check_profiles with autofix=True found only {len(res2)} issues. That was {len(result)} without autofix.")
+        remainder = check_profiles(mpd, autofix=False)
         if remainder:
-          print("ERROR: check --fix failed to fix: ", remainder)
+          print(json.dumps({"ERROR": "check --fix failed to fix: ", "remainder": remainder } ))
 
         if not args.noop:
           stats = write_xml(mpd, args.output_dir, noop=False, orig_suffix=(".orig" if args.backup else ""))
@@ -130,9 +143,11 @@ def main():
         if args.verbose: print(f" ... reading file {args.source} for {args.laser_name}", file=sys.stderr)
         with open(args.source, "r") as fd:
           table_list = list_tables(fd)
-      print(json.dumps(table_list))
+      # if args.verbose:
+      #   print(json.dumps(table_list))
       imp = import_from_tables(table_list, args.laser_name, args.source)
       print(json.dumps(imp))
+      # TODO: write_xml()
       sys.exit(0)
 
     ############################
