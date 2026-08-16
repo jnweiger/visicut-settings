@@ -67,7 +67,7 @@ def main():
  
     if args.verbose:
       print(f"... reading {args.settings_dir}", file=sys.stderr)
-    mpd = collect_profiles(args.settings_dir)
+    mpd = collect_laserprofiles(args.settings_dir)
 
     ############################
     if args.command in ("list"):
@@ -103,7 +103,7 @@ def main():
           print("INTERNAL ERROR: write_xml would produce changes on unchanged data: ", stats, file=sys.stderr)
           sys.exit(0)
 
-      result = check_profiles(mpd, autofix=False)
+      result = check_laserprofiles(mpd, autofix=False)
       if args.verbose:
         for change in result:
           print(change)
@@ -113,10 +113,10 @@ def main():
           print("Use --verbose check to list them all.", file=sys.stderr)
 
       if args.fix:
-        res2 = check_profiles(mpd, autofix=True)
+        res2 = check_laserprofiles(mpd, autofix=True)
         if len(result) > len(res2):
-          raise ValueError(f"check_profiles with autofix=True found only {len(res2)} issues. That was {len(result)} without autofix.")
-        remainder = check_profiles(mpd, autofix=False)
+          raise ValueError(f"check_laserprofiles with autofix=True found only {len(res2)} issues. That was {len(result)} without autofix.")
+        remainder = check_laserprofiles(mpd, autofix=False)
         if remainder:
           print(json.dumps({"ERROR": "check --fix failed to fix: ", "remainder": remainder } ))
 
@@ -146,8 +146,11 @@ def main():
       # if args.verbose:
       #   print(json.dumps(table_list))
       imp = import_from_tables(table_list, args.laser_name, args.source)
-      print(json.dumps(imp))
-      # TODO: write_xml()
+      if args.verbose:
+        print(json.dumps(imp))
+      if not args.noop:
+        stats = write_xml(imp, args.output_dir, noop=False, orig_suffix=(".orig" if args.backup else ""))
+        print(stats)
       sys.exit(0)
 
     ############################

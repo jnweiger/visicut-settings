@@ -68,7 +68,7 @@ def encode_xml_name(str):
   return re.sub(r'[^A-Za-z0-9-]', lambda m: f"_{ord(m.group(0))}_", str)
 
 
-def collect_profile_details(dir):
+def collect_profiles(dir):
   pdir = pathlib.Path(dir + "/profiles")
   r = {}
   for p in pdir.glob("*.xml"):
@@ -94,10 +94,12 @@ def collect_devices(dir):
   return r
 
 
-def collect_profiles(dir):
-  # This augments the data with attributes found in annotations.json
-  # the visicut xml structure has no freetext field for comments here.
-  # (description exisits for devices and profiles, but wiki comments correspond to laserprofile descriptions
+def collect_laserprofiles(dir):
+  # This is the main xml reader entry point. It also calls collect_materials, collect_devices, collect_profiles;
+  # and augments the data with attributes found in annotations.json
+  #
+  # The visicut xml structure has no freetext field for comments in laserprofiles, but
+  # description exisits for devices and profiles, but wiki comments correspond to laserprofile descriptions
   m = collect_materials(dir)
   pdir = pathlib.Path(dir + "/laserprofiles")
   anno_file = pdir.joinpath("annotations.json")
@@ -142,7 +144,7 @@ def collect_profiles(dir):
       mlp['profiles'][lp['device']][lp['profile']] = {}
     mlp['profiles'][lp['device']][lp['profile']][lp['thickness']] = lp['data']
 
-  p = collect_profile_details(dir)
+  p = collect_profiles(dir)
   l = collect_devices(dir)
 
   return { 'materials': m, 'profiles': p, 'devices': l, 'generator': generator }
@@ -272,9 +274,9 @@ def import_from_tables(table_list, laser, source=""):
 
   def sort_float_like(s):
     try:
-        return (0, float(s))
+      return (0, float(s))
     except ValueError:
-        return (1, s)
+      return (1, s)
 
   for t in table_list:
     p = _guess_profile(t.get("heading", ""))
@@ -293,6 +295,7 @@ def import_from_tables(table_list, laser, source=""):
           thick = match.groups()[0].replace(",", ".")   # '0.5'
       else:
         thick = r[cmap['thickness']]
+
       # now we have laser_name laser, material m, profile p, thickness thick. That is sufficient to construct a nested laser profile 
       if thick is None:
         if p == 'cut':
@@ -330,8 +333,8 @@ def import_from_tables(table_list, laser, source=""):
 
 ####
 
-def check_profiles(mpd, autofix=True):
-  # mpd = { 'materials': m, 'profiles': p, 'devices': l } as generated with collect_profiles
+def check_laserprofiles(mpd, autofix=True):
+  # mpd = { 'materials': m, 'profiles': p, 'devices': l } as generated with collect_laserprofiles
 
   r = []
   fixcounter = 0
@@ -513,24 +516,6 @@ def fmt_profile_xml(pname, p):
   # eng, p = { "version": 0.0, "DPI": 500.0, "description": "A new Laserprofile", "name": "eng-fs-500", "invertColors": false, "colorShift": 0.0, "ditherAlgorithm": { "progress": "0", "class": "de.thomas_oster.liblasercut.dithering.FloydSteinberg" }, "type": "rasterProfile" }
   # eng3d, p = { "version": 0.0, "DPI": 500.0, "description": "deep engrave", "name": "engrave 3d", "invertColors": false, "colorShift": 0.0, "type": "raster3dProfile" },
 
-  ptype = p.get('type', None)
-  if not ptype: # try to guess from name
-    if 'eng' in pname.lower():
-      if '3d' in pname.lower() or '3 d' in pname.lower():
-        ptype = 'raster3dProfile'
-      else:
-        ptype = 'rasterProfile'
-    elif 'cut' in pname.lower() or 'mark' in pname.lower():
-      ptype = 'vectorProfile'
-    else:
-      raise ValueError(f"fmt_profile_xml({name}, p) -> 'type' missing and guessing failed.")
-  if ptype == 'rasterProfile':
-    template = template_raster
-  elif ptype == 'raster3dProfile':
-    template = template_raster3d
-  elif ptype != 'vectorProfile':
-    raise ValueError(f"fmt_profile_xml({name}, unknown type='{ptype}'")
-
   template = """<?xml version="1.0" encoding="UTF-8"?>
 
 <vectorProfile version="0.0">
@@ -578,6 +563,7 @@ def fmt_profile_xml(pname, p):
       ptype = 'vectorProfile'
     else:
       raise ValueError(f"fmt_profile_xml({name}, p) -> 'type' missing and guessing failed.")
+
   if ptype == 'rasterProfile':
     template = template_raster
   elif ptype == 'raster3dProfile':
@@ -586,7 +572,6 @@ def fmt_profile_xml(pname, p):
     raise ValueError(f"fmt_profile_xml({name}, unknown type='{ptype}'")
 
   return template.format_map(xml_escape_values(p, { "DPI": 500.0, "description": "", "orderStrategy": "INNER_FIRST", "useOutline": False, "isCut": True, "width": 0.2, "invertColors": False, "colorShift": 0.0, "ditherAlgorithm": { "progress": "0", "class": "de.thomas_oster.liblasercut.dithering.FloydSteinberg" } }))
-  
 
 
 def _mkdir_pf(file):
@@ -612,7 +597,6 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
     filename = f"{dir}/materials/{encode_xml_name(name)}.xml"
     missing = not os.path.exists(filename)
     if not 'md5sum' in mat or md5 != mat['md5sum'] or missing:
-
       if not noop:
         # print(json.dumps({'filename': filename }))
         _mkdir_pf(filename)
@@ -643,11 +627,11 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
       for p in m['profiles'][d]:
         for t in m['profiles'][d][p]:
           print(n,d,p,t, m['profiles'][d][p][t], file=sys.stderr)
-          name = f"laserprofiles/{encode_xml_name(d)}/{encode_xml_name(n)}/{t}mm/{encode_xml_name(p)}.xml"
+          name = f"{encode_xml_name(d)}/{encode_xml_name(n)}/{t}mm/{encode_xml_name(p)}.xml"
           lp = m['profiles'][d][p][t]
           lp_xml, anno[name] = fmt_laserprofile_xml(lp)
           # print(name, lp_xml, anno[name])
-          filename = f"{dir}/{name}"
+          filename = f"{dir}/laserprofiles/{name}"
           missing = not os.path.exists(filename)
           md5 = hashlib.md5(lp_xml.encode("utf-8")).hexdigest()
           if not 'md5sum' in lp or md5 != lp['md5sum'] or missing:
@@ -674,7 +658,34 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
             stats['same'] += 1
 
   ## write "profiles/*.xml
-  print(f"TODO: ... writing {dir}/profiles/*.xml ...", file=sys.stderr)
+  for name, pro in mpd['profiles'].items():
+    pro_xml = fmt_profile_xml(name, pro)
+    md5 = hashlib.md5(pro_xml.encode("utf-8")).hexdigest()
+    filename = f"{dir}/profiles/{encode_xml_name(name)}.xml"
+    missing = not os.path.exists(filename)
+    if not 'md5sum' in pro or md5 != pro['md5sum'] or missing:
+      if not noop:
+        print(json.dumps({'filename': filename }))
+        _mkdir_pf(filename)
+        if os.path.exists(filename) and orig_suffix:
+          os.rename(filename, filename+orig_suffix)
+        with open(filename, "wb") as f:
+          f.write(pro_xml.encode("utf-8"))
+
+      if not 'md5sum' in pro:
+        print(f"written new: {filename}", file=sys.stderr)
+        stats['added'] += 1
+      elif md5 != pro['md5sum']:
+        print(f"written changed: {filename}", file=sys.stderr)
+        stats['changed'] += 1
+      else:
+        print(f"writtem unchanged: {filename}", file=sys.stderr)
+        stats['same'] += 1
+
+    else:
+      print(f"unchanged: {filename}", file=sys.stderr)
+      stats['same'] += 1
+
 
   ## write "laserprofiles/annotations.json"
   print(f"TODO: ... writing {dir}/laserprofiles/annotations.json ...", file=sys.stderr)
