@@ -29,7 +29,7 @@ def main():
 
     subparsers = parser.add_subparsers(title="Available sub commands", metavar="COMMAND", dest="command", required=True)
 
-    list_parser = subparsers.add_parser("list", aliases=["l"], help="print laserdevices, materials, and profiles found in the XML files of the settings directory.")
+    list_parser = subparsers.add_parser("list", aliases=["l", "dump"], help="print laserdevices, materials, and profiles found in the XML files of the settings directory.")
     list_parser.add_argument("filter", metavar="l|m|p|lp", nargs="?", choices=("all", "l", "lasers", "d", "devices", "n", "names", "m", "materials", "p", "profiles", "lp", "laserprofiles", "g", "gen", "generator"), default="all", help="optional filter to not print everything: lasers, materials, profiles")
 
     check_parser = subparsers.add_parser("check", aliases=["c"], help="Report inconsistencies of visicut profiles. E.g. unused materials, unused thickness, material profiles only defined for one laser, or only defined for cut or engrave.")
@@ -62,7 +62,9 @@ def main():
       parser.print_help()
       parser.exit(2)
 
-    if not args.output_dir:
+    if args.verbose:
+      print(args)
+    if 'output_dir' in args and not args.output_dir:
       args.output_dir = args.settings_dir
  
     if args.verbose:
@@ -70,7 +72,7 @@ def main():
     mpd = collect_laserprofiles(args.settings_dir)
 
     ############################
-    if args.command in ("list"):
+    if args.command in ("list", "dump"):
       filt = None
       if args.filter in ("l", "d", "n", "laser", "lasers", "dev", "device", "devices", "name", "names"):
         filt = "devices"

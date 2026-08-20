@@ -76,6 +76,7 @@ def collect_profiles(dir):
     # d = { 'vectorProfile': {'DPI': '500.0', 'description': 'rote linie nearest neigbour', 'name': 'cut-nn', 'orderStrategy': 'NEAREST', 'useOutline': 'false', 'isCut': 'true', 'width': '0.2'}}}
     t = list(d.keys())[0]
     d[t]['type'] = t
+    d[t]['md5sum'] = hashlib.file_digest(open(p, 'rb'), "md5").hexdigest()
     r[d[t]['name']] = { decode_xml_name(k): v for k, v in d[t].items() }
   return r
 
@@ -91,6 +92,7 @@ def collect_devices(dir):
     if 'laserCutter' in d:
       d['laserCutter'] = { decode_xml_name(k): v for k, v in d['laserCutter'].items() }
     r[d['name']] = { decode_xml_name(k): v for k, v in d.items() }
+    r[d['name']]['md5sum'] = hashlib.file_digest(open(p, 'rb'), "md5").hexdigest()
   return r
 
 
@@ -285,7 +287,7 @@ def import_from_tables(table_list, laser, source=""):
     cmap = _find_cols_by_name(t['th'])
     notes.append([p, cmap])
     for r in t['tr']:
-      thick = None 
+      thick = None
       m = r[cmap['material']]
       if cmap['thickness'] < 0 or r[cmap['thickness']] == "":
         # try parse thickness from material name name = "Baumwollstoff 0.5mm"
@@ -296,20 +298,20 @@ def import_from_tables(table_list, laser, source=""):
       else:
         thick = r[cmap['thickness']]
 
-      # now we have laser_name laser, material m, profile p, thickness thick. That is sufficient to construct a nested laser profile 
+      # now we have laser_name laser, material m, profile p, thickness thick. That is sufficient to construct a nested laser profile
       if thick is None:
         if p == 'cut':
           raise ValueError(f"ERROR: cut setting found without thickness: {r} in {source}")
         else:
           thick = '3.0'
           notes.append(f"{p}: {r} from {source} has no thickness. Using {thick}")
-        
+
       if not m in mat:
         mat[m] = { 'name': m, 'thicknesses': [], 'profiles': {} }
       if not laser in mat[m]['profiles']:
         mat[m]['profiles'][laser] = {}
 
-      lp = mat[m]['profiles'][laser] 
+      lp = mat[m]['profiles'][laser]
       if not p in lp:
         lp[p] = {}
       if thick in lp[p]:
@@ -325,10 +327,10 @@ def import_from_tables(table_list, laser, source=""):
         lp[p][thick]['min_power'] = r[cmap['min_power']]
       if cmap['frequency'] >= 0 and r[cmap['frequency']] != "":
         lp[p][thick]['frequency'] = r[cmap['frequency']]
-      
+
       if not thick in mat[m]['thicknesses']:
         mat[m]['thicknesses'] = sorted(mat[m]['thicknesses'] + [ thick ], key=sort_float_like)     # keep thicknesses list up to date
-      
+
   return { 'materials': mat, 'profiles': pro, 'devices': dev, "debug": notes }
 
 ####
@@ -488,7 +490,7 @@ def fmt_laserprofile_xml(lp):
     engraveBottomUp=lp.get('engraveBottomUp', 'false')
   )
   if 'annotation' in lp:
-    return xml, json.dumps(lp['annotation'])
+    return xml, lp['annotation']
   return xml, None
 
 
@@ -574,6 +576,13 @@ def fmt_profile_xml(pname, p):
   return template.format_map(xml_escape_values(p, { "DPI": 500.0, "description": "", "orderStrategy": "INNER_FIRST", "useOutline": False, "isCut": True, "width": 0.2, "invertColors": False, "colorShift": 0.0, "ditherAlgorithm": { "progress": "0", "class": "de.thomas_oster.liblasercut.dithering.FloydSteinberg" } }))
 
 
+def fmt_device_xml(name, d):
+  template = """
+"""
+  raise ValueError(f"fmt_device_xml({name}, not impl.")
+  return template.format_map(xml_escape_values(d, { "DPI": 500.0, "description": "" }))
+
+
 def _mkdir_pf(file):
   # create all the needed directory components that lead up to but not including the file itself.
   # To create a directory use _mkdir_pf(dir+"/.")
@@ -589,7 +598,7 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
   stats = { "same": 0, "added": 0, "changed": 0 }
 
   ## write "materials/*.xml"
-  print(f"... writing to {dir}/materials/*.xml ...", file=sys.stderr)
+  print(f"... writing={not noop} to {dir}/materials/*.xml ...", file=sys.stderr)
 
   for name, mat in mpd['materials'].items():
     mat_xml = fmt_material_xml(name, mat)
@@ -620,7 +629,7 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
       stats['same'] += 1
 
   ## write "laserprofiles/**.xml" (and collect annotations)
-  print(f"... writing to {dir}/laserprofiles/**.xml ...", file=sys.stderr)
+  print(f"... writing={not noop} to {dir}/laserprofiles/**.xml ...", file=sys.stderr)
   anno = {}
   for n,m in mpd['materials'].items():
     for d in m['profiles']:
@@ -629,7 +638,9 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
           print(n,d,p,t, m['profiles'][d][p][t], file=sys.stderr)
           name = f"{encode_xml_name(d)}/{encode_xml_name(n)}/{t}mm/{encode_xml_name(p)}.xml"
           lp = m['profiles'][d][p][t]
-          lp_xml, anno[name] = fmt_laserprofile_xml(lp)
+          lp_xml, lp_anno = fmt_laserprofile_xml(lp)
+          if lp_anno:
+            anno[name] = lp_anno
           # print(name, lp_xml, anno[name])
           filename = f"{dir}/laserprofiles/{name}"
           missing = not os.path.exists(filename)
@@ -644,13 +655,13 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
                 f.write(lp_xml.encode("utf-8"))
 
             if not 'md5sum' in lp:
-              print(f"written new: {filename}",  file=sys.stderr)
+              print(f"written={not noop} new: {filename}",  file=sys.stderr)
               stats['added'] += 1
             elif md5 != lp['md5sum']:
-              print(f"written changed: {filename}", md5, lp['md5sum'], file=sys.stderr)
+              print(f"written={not noop} changed: {filename}", md5, lp['md5sum'], file=sys.stderr)
               stats['changed'] += 1
             else:
-              print(f"writtem unchanged: {filename}", file=sys.stderr)
+              print(f"writtem={not noop} unchanged: {filename}", file=sys.stderr)
               stats['same'] += 1
 
           else:
@@ -673,13 +684,13 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
           f.write(pro_xml.encode("utf-8"))
 
       if not 'md5sum' in pro:
-        print(f"written new: {filename}", file=sys.stderr)
+        print(f"written={not noop} new: {filename}", file=sys.stderr)
         stats['added'] += 1
       elif md5 != pro['md5sum']:
-        print(f"written changed: {filename}", file=sys.stderr)
+        print(f"written={not noop} changed: {filename}", file=sys.stderr)
         stats['changed'] += 1
       else:
-        print(f"writtem unchanged: {filename}", file=sys.stderr)
+        print(f"written={not noop} unchanged: {filename}", file=sys.stderr)
         stats['same'] += 1
 
     else:
@@ -688,7 +699,34 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
 
 
   ## write "laserprofiles/annotations.json"
-  print(f"TODO: ... writing {dir}/laserprofiles/annotations.json ...", file=sys.stderr)
+  print(f"... writing={not noop} {dir}/laserprofiles/annotations.json ...", file=sys.stderr)
+  filename = f"{dir}/laserprofiles/annotations.json"
+  if os.path.exists(filename):
+    old_anno = json.load(open(filename))
+    if old_anno == anno:        # dict comparion is recursive, nice.
+      print(f"unchanged: {filename}", file=sys.stderr)
+      stats['same'] += 1
+    else:
+      if not noop:
+        if os.path.exists(filename) and orig_suffix:
+          os.rename(filename, filename+orig_suffix)
+        with open(filename, "wb") as f:
+          f.write(json.dumps(anno, indent=2).encode('utf-8'))
+      print(f"changed: {filename}", file=sys.stderr)
+      stats['changed'] += 1
+  else:
+    if not noop:
+      if os.path.exists(filename) and orig_suffix:
+        os.rename(filename, filename+orig_suffix)
+      with open(filename, "wb") as f:
+        f.write(json.dumps(anno, indent=2).encode('utf-8'))
+    print(f"written={not noop} new: {filename}", file=sys.stderr)
+    stats['added'] += 1
+
+
+  ## write "devices/*.xml"
+  print(f"TODO: ... writing {dir}/devices/*.xml ...", file=sys.stderr)
+  # fmt_device_xml(name, d):
 
   print("FIXME: write_xml: unfinsihed code.", file=sys.stderr)
   return stats
