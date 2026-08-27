@@ -34,7 +34,8 @@ def main():
 
     check_parser = subparsers.add_parser("check", aliases=["c"], help="Report inconsistencies of visicut profiles. E.g. unused materials, unused thickness, material profiles only defined for one laser, or only defined for cut or engrave.")
     check_parser.add_argument("-f", "--fix", action="store_true", help="Fill in missing entries.")
-    check_parser.add_argument("-g", "--gen", "--generator-file", type=str, help="Specify the generator file used for fixing. This implies --fix. Default: SETTINGS_DIR/laserprofiles/generator.json")
+    # The default laserprofiles/generator.json comes from lib/visicut_xml.py, the file format is defined in lib/visicut_xml.py:generate_laserprofile()
+    check_parser.add_argument("-g", "--gen", "--gen-file", "--generator-file", dest="generator_file", type=str, help="Specify the generator file used for fixing. This implies --fix. Default: SETTINGS_DIR/laserprofiles/generator.json")
     check_parser.add_argument("-o", "--output-dir", metavar="OUTDIR", help="Output directory, if writing settings. Default: write inplace in my settings directory.")
 
     import_parser = subparsers.add_parser("import", aliases=["i"], help="Process external data, such as wiki tables or json exports.")
@@ -69,7 +70,7 @@ def main():
  
     if args.verbose:
       print(f"... reading {args.settings_dir}", file=sys.stderr)
-    mpd = collect_laserprofiles(args.settings_dir)
+    mpd = collect_laserprofiles(args.settings_dir, args.generator_file)
 
     ############################
     if args.command in ("list", "dump"):

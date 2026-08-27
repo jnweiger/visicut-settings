@@ -96,7 +96,7 @@ def collect_devices(dir):
   return r
 
 
-def collect_laserprofiles(dir):
+def collect_laserprofiles(dir, gen_file=None):
   # This is the main xml reader entry point. It also calls collect_materials, collect_devices, collect_profiles;
   # and augments the data with attributes found in annotations.json
   #
@@ -105,7 +105,8 @@ def collect_laserprofiles(dir):
   m = collect_materials(dir)
   pdir = pathlib.Path(dir + "/laserprofiles")
   anno_file = pdir.joinpath("annotations.json")
-  gen_file = pdir.joinpath("generator.json")
+  if not gen_file:
+    gen_file = pdir.joinpath("generator.json")
   anno = {}
   if anno_file.is_file():
     anno = json.load(open(anno_file))
