@@ -107,6 +107,8 @@ def collect_laserprofiles(dir, gen_file=None):
   anno_file = pdir.joinpath("annotations.json")
   if not gen_file:
     gen_file = pdir.joinpath("generator.json")
+  else:
+    gen_file = pathlib.Path(gen_file)   # convert string to Path() object.
   anno = {}
   if anno_file.is_file():
     anno = json.load(open(anno_file))

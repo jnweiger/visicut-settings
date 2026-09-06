@@ -58,6 +58,7 @@ def main():
     rename_parser.add_argument("oldname", help="Name of an existing laser, material or profile. Which of the three is autodetected.")
     rename_parser.add_argument("newname", help="")
 
+    parser.set_defaults(generator_file=None)
     args = parser.parse_args()
     if args.command is None:     # add_subparsers(..., required=True) in modern python.
       parser.print_help()
