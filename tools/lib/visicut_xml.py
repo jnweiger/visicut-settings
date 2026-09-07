@@ -225,6 +225,16 @@ def generate_laserprofile(mpd, material_name, device_name, profile_name, thickne
   raise ValueError(f"{print_prefix}generate_laserprofile failed.")
 
 
+def _guess_device_class(line):
+  # "Zing"
+  # "Thunderlaser Nova 35"
+  h = line.lower()
+  if "epilog" in h or "zing" in h:
+    return "de.thomas_oster.liblasercut.drivers.EpilogZing"
+  if "thunder" in h or "nova" in h or "ruida" in h:
+    return "de.thomas_oster.liblasercut.drivers.Ruida"
+
+
 def _guess_profile(line):
   # "== Abmessungen =="
   # "==== Schneiden: CUT - (\"Rote Linie\") ===="
@@ -284,9 +294,14 @@ def import_from_tables(table_list, laser, source=""):
       return (1, s)
 
   for t in table_list:
-    p = _guess_profile(t.get("heading", ""))
+    pdesc = t.get("heading", "")
+    p = _guess_profile(pdesc)
     if not p:
       continue
+    if not p in pro:
+      ## we don't know much about this profile. we just have a name and the title, which we use as description. ...
+      if source: pdesc += f" ({source})"
+      pro[p] = { 'description': pdesc }
     cmap = _find_cols_by_name(t['th'])
     notes.append([p, cmap])
     for r in t['tr']:
@@ -558,32 +573,100 @@ def fmt_profile_xml(pname, p):
 """
 
   ptype = p.get('type', None)
+  piscut = None
   if not ptype: # try to guess from name
-    if 'eng' in name.lower():
-      if '3d' in name.lower() or '3 d' in name.lower():
+    if 'eng' in pname.lower():
+      if '3d' in pname.lower() or '3 d' in pname.lower():
         ptype = 'raster3dProfile'
       else:
         ptype = 'rasterProfile'
-    elif 'cut' in name.lower() or 'mark' in name.lower():
+      piscut = False
+    elif 'cut' in pname.lower():
       ptype = 'vectorProfile'
+      piscut = True
+    elif 'mark' in pname.lower():
+      ptype = 'vectorProfile'
+      piscut = False
     else:
-      raise ValueError(f"fmt_profile_xml({name}, p) -> 'type' missing and guessing failed.")
+      raise ValueError(f"fmt_profile_xml({pname}, p) -> 'type' missing and guessing failed.")
 
   if ptype == 'rasterProfile':
     template = template_raster
   elif ptype == 'raster3dProfile':
     template = template_raster3d
   elif ptype != 'vectorProfile':
-    raise ValueError(f"fmt_profile_xml({name}, unknown type='{ptype}'")
+    raise ValueError(f"fmt_profile_xml({pname}, unknown type='{ptype}'")
 
-  return template.format_map(xml_escape_values(p, { "DPI": 500.0, "description": "", "orderStrategy": "INNER_FIRST", "useOutline": False, "isCut": True, "width": 0.2, "invertColors": False, "colorShift": 0.0, "ditherAlgorithm": { "progress": "0", "class": "de.thomas_oster.liblasercut.dithering.FloydSteinberg" } }))
+  return template.format_map(xml_escape_values(p, { "name": pname, "DPI": 500.0, "description": "", "orderStrategy": "INNER_FIRST", "useOutline": False, "isCut": piscut, "width": 0.2, "invertColors": False, "colorShift": 0.0, "ditherAlgorithm": { "progress": "0", "class": "de.thomas_oster.liblasercut.dithering.FloydSteinberg" } }))
 
 
 def fmt_device_xml(name, d):
   template = """
+<?xml version="1.0" encoding="UTF-8"?>
+
+<laserDevice version="{version}">
+  <originBottomLeft>{originBottomLeft}</originBottomLeft>
+  <jobSentText>{jobSentText}/jobSentText>
+  <jobPrefix>{jobPrefix}</jobPrefix>
+  <laserCutter class="{laserCutter[class]}">
+    <hostname>{laserCutter[hostname]}</hostname>
+    <port>{laserCutter[port]}</port>
+    <autofocus>{laserCutter[autofocus]}</autofocus>
+    <hideSoftwareFocus>{laserCutter[hideSoftwareFocus]}</hideSoftwareFocus>
+    <bedWidth>{laserCutter[bedWidth]}</bedWidth>
+    <bedHeight>{laserCutter[bedHeight]}</bedHeight>
+  </laserCutter>
+  <cameraTiming>{cameraTiming}</cameraTiming>
+  <projectorTiming>{projectorTiming}</projectorTiming>
+  <projectorWidth>{projectorWidth}</projectorWidth>
+  <projectorHeight>{projectorHeight}</projectorHeight>
+  <thumbnailPath>{thumbnailPath}</thumbnailPath>
+  <description>{description}</description>
+  <name>{name}</name>
+</laserDevice>
 """
-  raise ValueError(f"fmt_device_xml({name}, not impl.")
-  return template.format_map(xml_escape_values(d, { "DPI": 500.0, "description": "" }))
+  template_ruida = """
+<?xml version="1.0" encoding="UTF-8"?>
+
+<laserDevice version="{version}">
+  <originBottomLeft>{originBottomLeft}</originBottomLeft>
+  <jobSentText>{jobSentText}/jobSentText>
+  <jobPrefix>{jobPrefix}</jobPrefix>
+  <laserCutter class="{laserCutter[class]}">
+    <baudRate>{laserCutter[baudRate]}</baudRate>
+    <host>{laserCutter[host]}</host>
+    <comport>{laserCutter[comport]}</comport>
+    <bedWidth>{laserCutter[bedWidth]}</bedWidth>
+    <bedHeight>{laserCutter[bedHeight]}</bedHeight>
+    <LaserPowerMin>{laserCutter[LaserPowerMin]}</LaserPowerMin>
+    <LaserPowerMax>{laserCutter[LaserPowerMax]}</LaserPowerMax>
+    <MaxVectorCutSpeed>{laserCutter[MaxVectorCutSpeed]}</MaxVectorCutSpeed>
+    <MaxVectorMoveSpeed>{laserCutter[MaxVectorMoveSpeed]}</MaxVectorMoveSpeed>
+    <serialTimeout>{laserCutter[serialTimeout]}</serialTimeout>
+    <exportPath>{laserCutter[exportPath]}</exportPath>
+    <uploadMethod>{laserCutter[uploadMethod]}</uploadMethod>
+  </laserCutter>
+  <cameraTiming>{cameraTiming}</cameraTiming>
+  <projectorTiming>{projectorTiming}</projectorTiming>
+  <projectorWidth>{projectorWidth}</projectorWidth>
+  <projectorHeight>{projectorHeight}</projectorHeight>
+  <thumbnailPath>{thumbnailPath}</thumbnailPath>
+  <description>{description}</description>
+  <name>{name}</name>
+</laserDevice>
+"""
+
+  default_port = 515
+  cl = d.get("laserCutter", {}).get("class", None)
+  if not cl:
+    cl = _guess_device_class(name)
+  if "Ruida" in cl:
+    template = template_ruida
+
+  if not cl:
+    raise ValueError(f"fmt_device_xml({name}) not implemented. We can do EpilogZing and Ruida")
+
+  return template.format_map(xml_escape_values(d, { "version": "0", "originBottomLeft": "false", "jobSentText": "$jobname -> $name", "jobPrefix": "visicut ", "laserCutter": {"class": cl, "baudRate": "921600", "host": "", "hostname": "", "port": "515", "comport": "auto", "autofocus": "false", "hideSoftwareFocus": "true", "bedWidth": "400", "bedHeight": "300", "LaserPowerMin": "0", "LaserPowerMax": "100", "MaxVectorMoveSpeed": "1000", "MaxVectorCutSpeed": "1000", "serialTimeout": "15000", "exportPath": "", "uploadMethod": "IP"}, "cameraTiming": "0", "projectorTiming": "0", "projectorWidth": "0", "projectorHeight": "0", "thumbnailPath": f"{name}.png", "description": "", "name": name }))
 
 
 def _mkdir_pf(file):
@@ -728,9 +811,33 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
 
 
   ## write "devices/*.xml"
-  print(f"TODO: ... writing {dir}/devices/*.xml ...", file=sys.stderr)
-  # fmt_device_xml(name, d):
+  for name, las in mpd['devices'].items():
+    las_xml = fmt_device_xml(name, las)
+    md5 = hashlib.md5(las_xml.encode("utf-8")).hexdigest()
+    filename = f"{dir}/devices/{encode_xml_name(name)}.xml"
+    missing = not os.path.exists(filename)
+    if not 'md5sum' in las or md5 != las['md5sum'] or missing:
+      if not noop:
+        print(json.dumps({'filename': filename }))
+        _mkdir_pf(filename)
+        if os.path.exists(filename) and orig_suffix:
+          os.rename(filename, filename+orig_suffix)
+        with open(filename, "wb") as f:
+          f.write(las_xml.encode("utf-8"))
 
-  print("FIXME: write_xml: unfinsihed code.", file=sys.stderr)
+      if not 'md5sum' in pro:
+        print(f"written={not noop} new: {filename}", file=sys.stderr)
+        stats['added'] += 1
+      elif md5 != las['md5sum']:
+        print(f"written={not noop} changed: {filename}", file=sys.stderr)
+        stats['changed'] += 1
+      else:
+        print(f"written={not noop} unchanged: {filename}", file=sys.stderr)
+        stats['same'] += 1
+
+    else:
+      print(f"unchanged: {filename}", file=sys.stderr)
+      stats['same'] += 1
+
   return stats
 
