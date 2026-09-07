@@ -84,8 +84,11 @@ def collect_profiles(dir):
 def collect_devices(dir):
   pdir = pathlib.Path(dir + "/devices")
   r = {}
-  for p in pdir.glob("*.xml"):
-    d = xmltodict.parse(open(p, 'rb'), xml_attribs=True)    # we want the class attribute
+  for  p in pdir.glob("*.xml"):
+    try:
+      d = xmltodict.parse(open(p, 'rb'), xml_attribs=True)    # we want the class attribute
+    except Exception as e:
+      raise ValueError(f"{p} faild to parse XML: {e}") from None
     # d = { "laserDevice": { "originBottomLeft": "false", "jobSentText": "...", "laserCutter": {
     #                       "@class": "de.thomas_oster.liblasercut.drivers.Ruida", "baudRate": "921600", "comport": "auto", ... }, "cameraTiming": "0", "projectorTiming": "0", "name": ... } }
     d = list(d.values())[0]
@@ -127,7 +130,8 @@ def collect_laserprofiles(dir, gen_file=None):
     # {'power': '70.0', 'speed': '0.5', 'frequency': '500', 'min__power': '70.0'}
     rpath = p.relative_to(pdir)
     # rpath = "Thunderlaser_32_Nova_32_35/Sperrholz_32_Kiefer/4.0mm/cut.xml"
-    a = decode_xml_name(str(rpath)).split("/")
+    a = [decode_xml_name(a) for a in str(rpath).split("/")]
+    a = [decode_xml_name(a) for a in str(rpath).split("/")]
     # a = ['Thunderlaser Nova 35', 'Sperrholz Kiefer', '4.0mm', 'cut.xml']
     lp = { 'device': a[0], 'material': a[1], 'thickness': float(a[2].replace("mm", "")), 'profile': a[3].replace(".xml", "") }
     # reduce double __ to _ in names, and convert values to float
@@ -601,12 +605,11 @@ def fmt_profile_xml(pname, p):
 
 
 def fmt_device_xml(name, d):
-  template = """
-<?xml version="1.0" encoding="UTF-8"?>
+  template = """<?xml version="1.0" encoding="UTF-8"?>
 
 <laserDevice version="{version}">
   <originBottomLeft>{originBottomLeft}</originBottomLeft>
-  <jobSentText>{jobSentText}/jobSentText>
+  <jobSentText>{jobSentText}</jobSentText>
   <jobPrefix>{jobPrefix}</jobPrefix>
   <laserCutter class="{laserCutter[class]}">
     <hostname>{laserCutter[hostname]}</hostname>
@@ -625,12 +628,11 @@ def fmt_device_xml(name, d):
   <name>{name}</name>
 </laserDevice>
 """
-  template_ruida = """
-<?xml version="1.0" encoding="UTF-8"?>
+  template_ruida = """<?xml version="1.0" encoding="UTF-8"?>
 
 <laserDevice version="{version}">
   <originBottomLeft>{originBottomLeft}</originBottomLeft>
-  <jobSentText>{jobSentText}/jobSentText>
+  <jobSentText>{jobSentText}</jobSentText>
   <jobPrefix>{jobPrefix}</jobPrefix>
   <laserCutter class="{laserCutter[class]}">
     <baudRate>{laserCutter[baudRate]}</baudRate>

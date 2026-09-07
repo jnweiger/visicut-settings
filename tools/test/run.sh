@@ -29,3 +29,10 @@ done
 for f in $w/laserprofiles/annotations.json; do
   test -f $f || { echo "ERROR: expected existing: file $f"; exit 1; }
 done
+
+## would that auto-merge? not yet.
+# rm -rf $w/*
+./vcsetman.py -v -d $w  import https://wiki.fablab-nuernberg.de/w/ZING_4030
+
+# are all thicknesses here in the material list?
+ls $w/laserprofiles/*/Sperrholz_32_Birke

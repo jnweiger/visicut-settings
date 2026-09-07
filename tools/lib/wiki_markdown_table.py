@@ -65,7 +65,7 @@ def mdlines2lists(mdlines):
           col = col[col.index('|')+1:]  # skip cell attributes like e.g. style="..." | 
         cols.append(html.unescape(col.strip()))     # strip whitespace at both ends and interpolate html sequences like &#124;
 
-      if newline == True:
+      if newline == True or len(tr) == 0:
         tr.append(cols)
       else:
         # no newline seen. Merge with previos table row
@@ -83,10 +83,12 @@ def mdlines2lists(mdlines):
         if "|" in col:
           col = col[col.index('|')+1:]              # skip cell attributes like e.g. style="..." | 
         cols.append(html.unescape(col.strip()))     # strip whitespace at both ends and interpolate html sequences like &#124;
-      if newline == True:
+      if newline == True or len(th) == 0:
         th.append(cols)
       else:
-        # no newline seen. Merge with previos table row
+        # no newline seen. Merge with previous table row
+        # print(line, cols, len(th))
+        # print(th[-1])
         for i in range(len(cols)):
           if i > len(th[-1]):
             th[-1].append("")
