@@ -1,0 +1,185 @@
+#! /usr/bin/python3
+#
+# visicut_ops.py - manipulate visicut settings in internal dict format
+#
+# (C) 2026, juergen@fabmail.org
+
+import sys, re, shutil
+from pathlib import Path
+
+def rename_device(mpd, oldname, newname, old_name_enc=None, gen_file=None):
+  delfiles = []     # record, which files we should delete, when writing out the data
+  if newname in mpd['devices']:
+    raise ValueError(f"rename_device('{oldname}', '{newname}') failed: device {newname} already exists.")
+  d = mpd['devices'][oldname]
+  print(d, file=sys.stderr)
+  # rename the device itself
+  d['name'] = newname
+  mpd['devices'][newname] = d
+  del mpd['devices'][oldname]
+
+  # record things for delete_paths later.
+  delfiles.append(f"devices/{old_name_enc}.xml")    # a file
+  delfiles.append(f"laserprofiles/{old_name_enc}")  # a subtree
+
+  # walk throug all [materials]*[profiles] an rename keys there.
+  for m in mpd['materials']:
+    p = mpd['materials'][m]['profiles']
+    if oldname in p:
+      p[newname] = p[oldname]
+      del p[oldname]
+
+  repl_count = None
+  if gen_file:
+    repl_count = replace_string_in_file(gen_file, f"\"{oldname}\"", f"\"{newname}\"")
+
+  print(f"rename_device: delfiles={delfiles}, replace_string={repl_count}")
+  return delfiles
+
+
+def delete_paths(basedir, pathlist):
+  """Delete a file or a directory (recursively). Missing paths are ignored."""
+  count = 0
+  for obj in pathlist:
+    if basedir:
+      path = Path(basedir + '/' + obj)
+    else:
+      path = Path(obj)
+
+    try:
+        if path.is_dir() and not path.is_symlink():
+            count += 1
+            shutil.rmtree(path)
+        else:
+            count += 1
+            path.unlink()
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        raise OSError(f"failed to delete {path}: {e}") from e
+
+  return count
+
+
+def replace_string_in_file(filename, olds, news):
+    """Replace all occurrences of `old` with `new` in `filename`.
+
+    Returns the number of replacements made. If the file doesn't
+    exist, does nothing and returns 0.
+    """
+    path = Path(filename)
+
+    try:
+        content = path.read_text()
+    except FileNotFoundError:
+        return 0
+
+    count = content.count(olds)
+    if count:
+        path.write_text(content.replace(olds, news))
+
+    return count
+
+
+####
+
+def used_laser_profiles(mpd, m, d):
+  plist = []
+  try:
+    tree = mpd['materials'][m]['profiles'][d]
+    for p in tree:
+      for t in tree[p]:
+        plist.append({ 'profile': p, 'thickness': t, 'data': tree[p][t] })
+  except:
+     pass
+  return plist
+
+
+def generate_laserprofile(mpd, material_name, device_name, profile_name, thickness, print_prefix=""):
+  print(f"{print_prefix}clp({material_name}, {device_name}, {profile_name}, {thickness})", file=sys.stderr)
+  # plist = used_laser_profiles(mpd, material_name, device_name)
+  # if plist:
+  #   print(f"clp have plist:", plist)
+  #   # raise "generate_laserprofile with plist not impl."
+  if not "generator" in mpd or not mpd['generator']:
+    raise f"{print_prefix}generate_laserprofile cannot create profile without generator."
+  dlist = mpd['generator'][device_name]
+  for i in range(len(dlist)):
+    d = dlist[i]
+    # Material    Profile     Thickness   { ...data... }
+    # [ "holz",   "cut",          "3.0",  { "speed": 33, "power": 34 } ]
+    # [ 'holz',   'mark|eng',     '',     {'speed': 99, 'power': 34}]
+    if re.search(d[0], material_name, re.IGNORECASE) and \
+       re.search(d[1], profile_name,  re.IGNORECASE) and \
+       re.search(d[2], str(thickness),     re.IGNORECASE):
+      print(f"{print_prefix}generator.{device_name}.{i}: match", d, file=sys.stderr)
+      r = d[3].copy()
+      date = datetime.datetime.now().strftime("%Y%m%d")
+
+      r['annotations'] = { "source": f"generator.{device_name}.{i}", "description": "gen "+date }
+      return r;
+  print(f"{print_prefix}{device_name}: no matching default: ", [[d[0], d[1], d[2]] for d in dlist], file=sys.stderr)
+  raise ValueError(f"{print_prefix}generate_laserprofile failed.")
+
+
+def check_laserprofiles(mpd, autofix=True):
+  # mpd = { 'materials': m, 'profiles': p, 'devices': l } as generated with collect_laserprofiles
+
+  r = []
+  fixcounter = 0
+  ### find materials that have no name. (autocreated by profiles, but xml file missing in /materials folder.)
+  for n,m in mpd['materials'].items():
+    if not 'name' in m:
+      r.append(f"material '{n}' used in laserprofiles, but materials/{encode_xml_name(n)}.xml is missing.")
+      if autofix:
+        m['name'] = n
+        fixcounter = fixcounter + 1
+    if not 'thicknesses' in m:
+      m['thicknesses'] = []
+
+  ### check that the thicknesses listed with each material agrees with the materials profiles.devices.profile.thickness tree
+  for n,m in mpd['materials'].items():
+    tseen = { t: 0 for t in m['thicknesses'] }
+    tmiss = {}
+    # print(n, m['thicknesses'])
+    for d in m['profiles']:
+      for p in m['profiles'][d]:
+        for t in m['profiles'][d][p]:
+          if t in tseen:
+            tseen[t] = tseen[t] + 1
+          else:
+            tmiss[t] = tmiss.get(t, 0) + 1
+    # print(tseen, tmiss)
+    for t, c in tseen.items():
+      if c == 0:
+        r.append(f"material '{n}': thickness {t} is not used in any laserprofile.")
+    for t in tmiss:
+      r.append(f"material '{n}': thickness {t} used in laserprofiles, but not listed in thicknesses.")
+      fixcounter = fixcounter + 1
+      if autofix:
+        m['thicknesses'] = sorted(m['thicknesses'] + [t])
+
+  ### devices, profiles, and thicknesses are a three-dimensional space.
+  ## the thicknesses dimension is material dependant.
+  ## check that all points in this space are set in each material.
+  devs = list(mpd['devices'].keys())
+  profs = list(mpd['profiles'].keys())
+  # print(devs, profs)
+  for n,m in mpd['materials'].items():
+    ths = m['thicknesses']
+    # print(n, ths)
+    for d in devs:
+      if not d in m['profiles']:
+        m['profiles'][d] = {}
+      for p in profs:
+        if not p in m['profiles'][d]:
+          m['profiles'][d][p] = {}
+        for t in ths:
+          if not t in m['profiles'][d][p]:
+            fixcounter = fixcounter + 1
+            r.append(f"generate_laserprofile(mpd, '{n}', '{d}', '{p}', '{t}')")
+            if autofix:
+              m['profiles'][d][p][t] = generate_laserprofile(mpd, n, d, p, t, f"{fixcounter}: ")
+
+  return r
+

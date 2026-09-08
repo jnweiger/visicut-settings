@@ -14,6 +14,7 @@ LIB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib')
 sys.path.insert(0, LIB_DIR)
 
 from visicut_xml import *
+from visicut_ops import *
 from wiki_markdown_table import *
 
 
@@ -25,7 +26,7 @@ def main():
     parser.add_argument("-d", "--settings-dir", metavar="DIR", default=def_settings_dir, help="My Visicut settings directory. Default ~/.visicut")
     parser.add_argument("-n", "--noop", action="store_true", help="Prevent an changes. Default: write or update settings when needed.")
     parser.add_argument("-v", "--verbose", action="store_true", help="Report more details.")
-    parser.add_argument("-b", "--backup", action="store_true", help="Backup files with '.orig' suffix before overwriting. Default: No backup.") 
+    parser.add_argument("-b", "--backup", action="store_true", help="Backup files with '.orig' suffix before overwriting. Default: No backup.")
 
     subparsers = parser.add_subparsers(title="Available sub commands", metavar="COMMAND", dest="command", required=True)
 
@@ -34,12 +35,12 @@ def main():
 
     check_parser = subparsers.add_parser("check", aliases=["c"], help="Report inconsistencies of visicut profiles. E.g. unused materials, unused thickness, material profiles only defined for one laser, or only defined for cut or engrave.")
     check_parser.add_argument("-f", "--fix", action="store_true", help="Fill in missing entries.")
-    # The default laserprofiles/generator.json comes from lib/visicut_xml.py, the file format is defined in lib/visicut_xml.py:generate_laserprofile()
+    # The default laserprofiles/generator.json comes from lib/visicut_ops.py, the file format is defined in lib/visicut_ops.py:generate_laserprofile()
     check_parser.add_argument("-g", "--gen", "--gen-file", "--generator-file", dest="generator_file", type=str, help="Specify the generator file used for fixing. This implies --fix. Default: SETTINGS_DIR/laserprofiles/generator.json")
     check_parser.add_argument("-o", "--output-dir", metavar="OUTDIR", help="Output directory, if writing settings. Default: write inplace in my settings directory.")
 
     import_parser = subparsers.add_parser("import", aliases=["i"], help="Process external data, such as wiki tables or json exports.")
-    import_parser.add_argument("source", metavar="file.md|URL", help="wiki url or wiki markdown file to import. Use -o ... to create new xml settings for later 'compare' or 'merge'.")
+    import_parser.add_argument("source", metavar="file.md|URL", help="wiki url or wiki markdown file to import. Use -o ... to create new xml settings for later 'compare' or 'merge'. If the output directory is not empty, then import behaves like 'merge -O'")
     import_parser.add_argument("-l", "--laser-name", metavar="DEVICE", help="specfy the name of the laser to import. Default: guess from the filename or URL.")
     import_parser.add_argument("-o", "--output-dir", metavar="OUTDIR", help="Output directory, if writing settings. Default: write inplace in my settings directory.")
 
@@ -57,6 +58,7 @@ def main():
     rename_parser = subparsers.add_parser("rename", aliases=["r"], help="rename laser device, profile, or material.")
     rename_parser.add_argument("oldname", help="Name of an existing laser, material or profile. Which of the three is autodetected.")
     rename_parser.add_argument("newname", help="")
+    rename_parser.add_argument("-o", "--output-dir", metavar="OUTDIR", help="Output directory, if writing settings. Default: write inplace in my settings directory.")
 
     parser.set_defaults(generator_file=None)
     args = parser.parse_args()
@@ -68,7 +70,7 @@ def main():
       print(args)
     if 'output_dir' in args and not args.output_dir:
       args.output_dir = args.settings_dir
- 
+
     if args.verbose:
       print(f"... reading {args.settings_dir}", file=sys.stderr)
     mpd = collect_laserprofiles(args.settings_dir, args.generator_file)
@@ -134,9 +136,9 @@ def main():
       if not args.laser_name:
         if "://" in args.source:    # oh, its an url.
           urlpath = urlsplit(args.source).path
-          args.laser_name = os.path.splitext(os.path.basename(urlpath))[0] 
+          args.laser_name = os.path.splitext(os.path.basename(urlpath))[0]
         else:
-          args.laser_name = os.path.splitext(os.path.basename(args.source))[0] 
+          args.laser_name = os.path.splitext(os.path.basename(args.source))[0]
       if "://" in args.source:
         if not "?action=" in args.source and not ".md" in args.source:
           args.source += "?action=raw"
@@ -169,7 +171,28 @@ def main():
 
     ############################
     if args.command in ("rename"):
-      print(f"{args.command} not impl.", file=sys.stderr)
+      if not args.oldname or not args.newname:
+        print(f"rename needs two parameters: OLDNAME NEWNAME", file=sys.stderr)
+        sys.exit(1)
+      deleteme = None
+      if args.oldname in mpd['devices'].keys():
+        # CAUTION: keep gen_file in sync with visicut_xml.py:collect_laserprofiles()
+        deleteme = rename_device(mpd, args.oldname, args.newname, encode_xml_name(args.oldname), gen_file=(None if args.noop else args.output_dir+"/laserprofiles/generator.json"))
+      elif args.oldname in mpd['profiles'].keys():
+        rename_profile(mpd, args.oldname, args.newname)
+      elif args.oldname in mpd['materials'].keys():
+        rename_material(mpd, args.oldname, args.newname)
+      else:
+        print(f"{args.oldname} is neither an existing device, profile or material.", file=sys.stderr)
+        sys.exit(1)
+
+      if not args.noop:
+        stats = write_xml(mpd, args.output_dir, noop=False, orig_suffix=(".orig" if args.backup else ""))
+        print(stats)
+        if deleteme:
+          n = delete_paths(args.output_dir, deleteme)
+          print(f"delete_paths: {n} deleted: {deleteme}")
+
       sys.exit(0)
 
     print(f"ERROR: unknown command {args.command}.", file=sys.stderr)

@@ -5,9 +5,9 @@ basedir=/tmp/vca
 set -x
 set -e
 
-if [ ! -d "$basedir" ]; then
+if [ ! -d "$basedir/.visicut" ]; then
   mkdir -p "$basedir"
-  cp -a ~/.visicut "$basedir"
+  cp -aL ~/.visicut "$basedir"
 fi
 
 # simple check, if the expected two lasers from FBALABNBG are here:

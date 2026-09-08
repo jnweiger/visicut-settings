@@ -109,7 +109,7 @@ def collect_laserprofiles(dir, gen_file=None):
   pdir = pathlib.Path(dir + "/laserprofiles")
   anno_file = pdir.joinpath("annotations.json")
   if not gen_file:
-    gen_file = pdir.joinpath("generator.json")
+    gen_file = pdir.joinpath("generator.json")  # CAUTION: keep in sync with vcsetman.py: command "rename"
   else:
     gen_file = pathlib.Path(gen_file)   # convert string to Path() object.
   anno = {}
@@ -188,235 +188,6 @@ def path_of_laserprofile(m, d, p, t, b=None):
   if b:
     return frelpath(path, b)
   return path
-
-
-def used_laser_profiles(mpd, m, d):
-  plist = []
-  try:
-    tree = mpd['materials'][m]['profiles'][d]
-    for p in tree:
-      for t in tree[p]:
-        plist.append({ 'profile': p, 'thickness': t, 'data': tree[p][t] })
-  except:
-     pass
-  return plist
-
-
-def generate_laserprofile(mpd, material_name, device_name, profile_name, thickness, print_prefix=""):
-  print(f"{print_prefix}clp({material_name}, {device_name}, {profile_name}, {thickness})", file=sys.stderr)
-  # plist = used_laser_profiles(mpd, material_name, device_name)
-  # if plist:
-  #   print(f"clp have plist:", plist)
-  #   # raise "generate_laserprofile with plist not impl."
-  if not "generator" in mpd or not mpd['generator']:
-    raise f"{print_prefix}generate_laserprofile cannot create profile without generator."
-  dlist = mpd['generator'][device_name]
-  for i in range(len(dlist)):
-    d = dlist[i]
-    # Material    Profile     Thickness   { ...data... }
-    # [ "holz",   "cut",          "3.0",  { "speed": 33, "power": 34 } ]
-    # [ 'holz',   'mark|eng',     '',     {'speed': 99, 'power': 34}]
-    if re.search(d[0], material_name, re.IGNORECASE) and \
-       re.search(d[1], profile_name,  re.IGNORECASE) and \
-       re.search(d[2], str(thickness),     re.IGNORECASE):
-      print(f"{print_prefix}generator.{device_name}.{i}: match", d, file=sys.stderr)
-      r = d[3].copy()
-      date = datetime.datetime.now().strftime("%Y%m%d")
-
-      r['annotations'] = { "source": f"generator.{device_name}.{i}", "description": "gen "+date }
-      return r;
-  print(f"{print_prefix}{device_name}: no matching default: ", [[d[0], d[1], d[2]] for d in dlist], file=sys.stderr)
-  raise ValueError(f"{print_prefix}generate_laserprofile failed.")
-
-
-def _guess_device_class(line):
-  # "Zing"
-  # "Thunderlaser Nova 35"
-  h = line.lower()
-  if "epilog" in h or "zing" in h:
-    return "de.thomas_oster.liblasercut.drivers.EpilogZing"
-  if "thunder" in h or "nova" in h or "ruida" in h:
-    return "de.thomas_oster.liblasercut.drivers.Ruida"
-
-
-def _guess_profile(line):
-  # "== Abmessungen =="
-  # "==== Schneiden: CUT - (\"Rote Linie\") ===="
-  # "==== Markieren: MARK - (\"Grüne Linie\") ===="
-  # "==== Gravieren: ENGRAVE - (\"Schwarze Fläche\") ===="
-  h = line.lower()
-  p = None
-  if "cut" in h or "schneid" in h:
-    p = "cut"
-  elif "mark" in h:
-    p = "mark"
-  elif "grav" in h:
-    p = "engrave"
-  return p
-
-
-def _find_cols_by_name(ths, name=""):
-  # ths = [ [ "Material", "min power", "power", "speed", "frequency", "Bemerkung" ], ... ]
-  cmap = { "material": -1, "thickness": -1, "min_power": -1, "power": -1, "speed": -1, "frequency": -1, "comment": -1 }
-  if type(ths[0]) == type(""):
-    ths = [ ths ]
-  for th in ths:
-    for i in range(len(th)):
-      name = th[i].lower()
-      if "power" in name and "min" in name:
-        cmap['min_power'] = i
-      elif "power" in name:
-        cmap['power'] = i
-      elif "thick" in name or "dick" in name or "stärke" in name:
-        cmap['power'] = i
-      elif "mat" in name:   # not "Materialstärke"
-        cmap['material'] = i
-      elif "speed" in name or "geschwind" in name:
-        cmap['speed'] = i
-      elif "freq" in name:
-        cmap['frequency'] = i
-      elif "merkung" in name or "beschreib" in name or "omment" in name or "not" in name:
-        cmap['comment'] = i
-
-  # material, power, speed are mandatory.
-  # thickness, min_power, frequency, comment are optional.
-  if cmap['material'] < 0 or cmap['power'] < 0 or cmap['speed'] < 0:
-    raise ValueError(f"_find_cols_by_name: mandatory columns material, power, speed not found in table {name} th={ths}")
-  return cmap
-
-
-def import_from_tables(table_list, laser, source=""):
-  mat = {}
-  pro = {}
-  dev = { laser: { "version":0, "name": laser} }
-  notes = []
-
-  def sort_float_like(s):
-    try:
-      return (0, float(s))
-    except ValueError:
-      return (1, s)
-
-  for t in table_list:
-    pdesc = t.get("heading", "")
-    p = _guess_profile(pdesc)
-    if not p:
-      continue
-    if not p in pro:
-      ## we don't know much about this profile. we just have a name and the title, which we use as description. ...
-      if source: pdesc += f" ({source})"
-      pro[p] = { 'description': pdesc }
-    cmap = _find_cols_by_name(t['th'])
-    notes.append([p, cmap])
-    for r in t['tr']:
-      thick = None
-      m = r[cmap['material']]
-      if cmap['thickness'] < 0 or r[cmap['thickness']] == "":
-        # try parse thickness from material name name = "Baumwollstoff 0.5mm"
-        match = re.search(r"\s*([\d\.,]+)\s*mm\s*$", m)
-        if match:
-          m = m[:match.start()]                   # 'Baumwollstoff'
-          thick = match.groups()[0].replace(",", ".")   # '0.5'
-      else:
-        thick = r[cmap['thickness']]
-
-      # now we have laser_name laser, material m, profile p, thickness thick. That is sufficient to construct a nested laser profile
-      if thick is None:
-        if p == 'cut':
-          raise ValueError(f"ERROR: cut setting found without thickness: {r} in {source}")
-        else:
-          thick = '3.0'
-          notes.append(f"{p}: {r} from {source} has no thickness. Using {thick}")
-
-      if not m in mat:
-        mat[m] = { 'name': m, 'thicknesses': [], 'profiles': {} }
-      if not laser in mat[m]['profiles']:
-        mat[m]['profiles'][laser] = {}
-
-      lp = mat[m]['profiles'][laser]
-      if not p in lp:
-        lp[p] = {}
-      if thick in lp[p]:
-        notes.append(f"duplicate thickness {thick} in {r} material={m}, profile={p}, device={laser} from source {source}: previous entry overwritten.")
-      anno = {}
-      if len(source):
-        anno['source'] = source
-      if cmap['comment'] >= 0 and r[cmap['comment']] != "":
-        anno['description'] =     r[cmap['comment']]
-      lp[p][thick] = { 'power': r[cmap['power']], 'speed': r[cmap['speed']], 'annotation': anno }
-
-      if cmap['min_power'] >= 0 and r[cmap['min_power']] != "":
-        lp[p][thick]['min_power'] = r[cmap['min_power']]
-      if cmap['frequency'] >= 0 and r[cmap['frequency']] != "":
-        lp[p][thick]['frequency'] = r[cmap['frequency']]
-
-      if not thick in mat[m]['thicknesses']:
-        mat[m]['thicknesses'] = sorted(mat[m]['thicknesses'] + [ thick ], key=sort_float_like)     # keep thicknesses list up to date
-
-  return { 'materials': mat, 'profiles': pro, 'devices': dev, "debug": notes }
-
-####
-
-def check_laserprofiles(mpd, autofix=True):
-  # mpd = { 'materials': m, 'profiles': p, 'devices': l } as generated with collect_laserprofiles
-
-  r = []
-  fixcounter = 0
-  ### find materials that have no name. (autocreated by profiles, but xml file missing in /materials folder.)
-  for n,m in mpd['materials'].items():
-    if not 'name' in m:
-      r.append(f"material '{n}' used in laserprofiles, but materials/{encode_xml_name(n)}.xml is missing.")
-      if autofix:
-        m['name'] = n
-        fixcounter = fixcounter + 1
-    if not 'thicknesses' in m:
-      m['thicknesses'] = []
-
-  ### check that the thicknesses listed with each material agrees with the materials profiles.devices.profile.thickness tree
-  for n,m in mpd['materials'].items():
-    tseen = { t: 0 for t in m['thicknesses'] }
-    tmiss = {}
-    # print(n, m['thicknesses'])
-    for d in m['profiles']:
-      for p in m['profiles'][d]:
-        for t in m['profiles'][d][p]:
-          if t in tseen:
-            tseen[t] = tseen[t] + 1
-          else:
-            tmiss[t] = tmiss.get(t, 0) + 1
-    # print(tseen, tmiss)
-    for t, c in tseen.items():
-      if c == 0:
-        r.append(f"material '{n}': thickness {t} is not used in any laserprofile.")
-    for t in tmiss:
-      r.append(f"material '{n}': thickness {t} used in laserprofiles, but not listed in thicknesses.")
-      fixcounter = fixcounter + 1
-      if autofix:
-        m['thicknesses'] = sorted(m['thicknesses'] + [t])
-
-  ### devices, profiles, and thicknesses are a three-dimensional space.
-  ## the thicknesses dimension is material dependant.
-  ## check that all points in this space are set in each material.
-  devs = list(mpd['devices'].keys())
-  profs = list(mpd['profiles'].keys())
-  # print(devs, profs)
-  for n,m in mpd['materials'].items():
-    ths = m['thicknesses']
-    # print(n, ths)
-    for d in devs:
-      if not d in m['profiles']:
-        m['profiles'][d] = {}
-      for p in profs:
-        if not p in m['profiles'][d]:
-          m['profiles'][d][p] = {}
-        for t in ths:
-          if not t in m['profiles'][d][p]:
-            fixcounter = fixcounter + 1
-            r.append(f"generate_laserprofile(mpd, '{n}', '{d}', '{p}', '{t}')")
-            if autofix:
-              m['profiles'][d][p][t] = generate_laserprofile(mpd, n, d, p, t, f"{fixcounter}: ")
-
-  return r
 
 ####
 
@@ -531,6 +302,7 @@ def xml_escape_values(obj, defaults={}):
     elif type(v) == type({}): a[k] = xml_escape_values(v, defaults.get(k, {}))
     elif      v  is True:     a[k] = 'true'
     elif      v  is False:    a[k] = 'false'
+    elif      v  is None:     a[k] = ''
   return a
 
 
@@ -604,6 +376,16 @@ def fmt_profile_xml(pname, p):
   return template.format_map(xml_escape_values(p, { "name": pname, "DPI": 500.0, "description": "", "orderStrategy": "INNER_FIRST", "useOutline": False, "isCut": piscut, "width": 0.2, "invertColors": False, "colorShift": 0.0, "ditherAlgorithm": { "progress": "0", "class": "de.thomas_oster.liblasercut.dithering.FloydSteinberg" } }))
 
 
+def _guess_device_class(line):
+  # "Zing"
+  # "Thunderlaser Nova 35"
+  h = line.lower()
+  if "epilog" in h or "zing" in h:
+    return "de.thomas_oster.liblasercut.drivers.EpilogZing"
+  if "thunder" in h or "nova" in h or "ruida" in h:
+    return "de.thomas_oster.liblasercut.drivers.Ruida"
+
+
 def fmt_device_xml(name, d):
   template = """<?xml version="1.0" encoding="UTF-8"?>
 
@@ -668,6 +450,7 @@ def fmt_device_xml(name, d):
   if not cl:
     raise ValueError(f"fmt_device_xml({name}) not implemented. We can do EpilogZing and Ruida")
 
+  print(d, xml_escape_values(d, { "version": "0", "originBottomLeft": "false", "jobSentText": "$jobname -> $name", "jobPrefix": "visicut ", "laserCutter": {"class": cl, "baudRate": "921600", "host": "", "hostname": "", "port": "515", "comport": "auto", "autofocus": "false", "hideSoftwareFocus": "true", "bedWidth": "400", "bedHeight": "300", "LaserPowerMin": "0", "LaserPowerMax": "100", "MaxVectorMoveSpeed": "1000", "MaxVectorCutSpeed": "1000", "serialTimeout": "15000", "exportPath": "", "uploadMethod": "IP"}, "cameraTiming": "0", "projectorTiming": "0", "projectorWidth": "0", "projectorHeight": "0", "thumbnailPath": f"{name}.png", "description": "", "name": name }))
   return template.format_map(xml_escape_values(d, { "version": "0", "originBottomLeft": "false", "jobSentText": "$jobname -> $name", "jobPrefix": "visicut ", "laserCutter": {"class": cl, "baudRate": "921600", "host": "", "hostname": "", "port": "515", "comport": "auto", "autofocus": "false", "hideSoftwareFocus": "true", "bedWidth": "400", "bedHeight": "300", "LaserPowerMin": "0", "LaserPowerMax": "100", "MaxVectorMoveSpeed": "1000", "MaxVectorCutSpeed": "1000", "serialTimeout": "15000", "exportPath": "", "uploadMethod": "IP"}, "cameraTiming": "0", "projectorTiming": "0", "projectorWidth": "0", "projectorHeight": "0", "thumbnailPath": f"{name}.png", "description": "", "name": name }))
 
 
@@ -682,7 +465,16 @@ def _mkdir_pf(file):
         os.mkdir(p)
 
 
+
 def write_xml(mpd, dir, noop=False, orig_suffix=""):
+  """
+  write_xml compares md5sums like this:
+   - the md5sum stored in mpd with the data is compared to the md5sum of the freshly formatted xml.
+   - if they match, the file is not written (unless it is physically missing). If they don't, the file is overwritten.
+   - CAUTION: this does not compare md5sum of what is actually on disk in the output directory.
+
+  CAUTION: when the import command calls write_xml() it is effectively a "merge -O"
+  """
   stats = { "same": 0, "added": 0, "changed": 0 }
 
   ## write "materials/*.xml"
