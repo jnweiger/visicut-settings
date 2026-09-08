@@ -587,6 +587,8 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
       print(f"unchanged: {filename}", file=sys.stderr)
       stats['same'] += 1
     else:
+      raise ValueError("FIME: must merge anno ontop of old_anno")
+
       if not noop:
         if os.path.exists(filename) and orig_suffix:
           os.rename(filename, filename+orig_suffix)

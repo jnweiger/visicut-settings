@@ -60,6 +60,12 @@ def main():
     rename_parser.add_argument("newname", help="")
     rename_parser.add_argument("-o", "--output-dir", metavar="OUTDIR", help="Output directory, if writing settings. Default: write inplace in my settings directory.")
 
+    gen_parser = subparsers.add_parser("generate", aliases=["gen"], help="Print a a json structure with laser settings for a given laser, material and thickness")
+    gen_parser.add_argument("device", help="Name of a laser. If unsure, use 'dump lasers | jq keys'")
+    gen_parser.add_argument("material", help="Name of a material. The generator matches substring patterns. See 'dump m | jq keys' and your generator.json file.")
+    gen_parser.add_argument("thickness", help="Thickness in mm. The generator interpolates and extrapolates according to generator.json")
+    gen_parser.add_argument("-g", "--gen", "--gen-file", "--generator-file", dest="generator_file", type=str, help="Specify the generator file used for fixing. This implies --fix. Default: SETTINGS_DIR/laserprofiles/generator.json")
+
     parser.set_defaults(generator_file=None)
     args = parser.parse_args()
     if args.command is None:     # add_subparsers(..., required=True) in modern python.
@@ -170,18 +176,23 @@ def main():
       sys.exit(0)
 
     ############################
+    if args.command in ("generate"):
+      print(f"{args.command} not impl.", file=sys.stderr)
+      sys.exit(0)
+
+    ############################
     if args.command in ("rename"):
-      if not args.oldname or not args.newname:
-        print(f"rename needs two parameters: OLDNAME NEWNAME", file=sys.stderr)
-        sys.exit(1)
       deleteme = None
+      ext = { "enc_old": encode_xml_name(args.oldname), "enc_new": encode_xml_name(args.newname), "gen_file": None }
+      if not args.noop: ext['gen_file'] = args.output_dir+"/laserprofiles/generator.json"
+
       if args.oldname in mpd['devices'].keys():
         # CAUTION: keep gen_file in sync with visicut_xml.py:collect_laserprofiles()
-        deleteme = rename_device(mpd, args.oldname, args.newname, encode_xml_name(args.oldname), gen_file=(None if args.noop else args.output_dir+"/laserprofiles/generator.json"))
+        deleteme = rename_device(mpd, args.oldname, args.newname, ext)
       elif args.oldname in mpd['profiles'].keys():
-        rename_profile(mpd, args.oldname, args.newname)
+        deleteme = rename_profile(mpd, args.oldname, args.newname, ext)
       elif args.oldname in mpd['materials'].keys():
-        rename_material(mpd, args.oldname, args.newname)
+        deleteme = rename_material(mpd, args.oldname, args.newname, ext)
       else:
         print(f"{args.oldname} is neither an existing device, profile or material.", file=sys.stderr)
         sys.exit(1)

@@ -7,7 +7,15 @@
 import sys, re, shutil
 from pathlib import Path
 
-def rename_device(mpd, oldname, newname, old_name_enc=None, gen_file=None):
+def rename_material(mpd, oldname, newname, old_name_enc=None, new_name_enc=None, anno_file=None):
+  delfiles = []     # record, which files we should delete, when writing out the data
+  if newname in mpd['materials']:
+    raise ValueError(f"rename_material('{oldname}', '{newname}') failed: material '{newname}' already exists.")
+
+  raise ValueError(f"rename_material( not impl.")
+
+
+def rename_device(mpd, oldname, newname, ext={}):
   delfiles = []     # record, which files we should delete, when writing out the data
   if newname in mpd['devices']:
     raise ValueError(f"rename_device('{oldname}', '{newname}') failed: device {newname} already exists.")
@@ -16,22 +24,23 @@ def rename_device(mpd, oldname, newname, old_name_enc=None, gen_file=None):
   # rename the device itself
   d['name'] = newname
   mpd['devices'][newname] = d
-  del mpd['devices'][oldname]
+  del(mpd['devices'][oldname])
 
   # record things for delete_paths later.
-  delfiles.append(f"devices/{old_name_enc}.xml")    # a file
-  delfiles.append(f"laserprofiles/{old_name_enc}")  # a subtree
+  if 'old_enc' in ext:
+    delfiles.append(f"devices/{ext['old_enc']}.xml")    # a file
+    delfiles.append(f"laserprofiles/{ext['old_enc']}")  # a subtree
 
   # walk throug all [materials]*[profiles] an rename keys there.
   for m in mpd['materials']:
     p = mpd['materials'][m]['profiles']
     if oldname in p:
       p[newname] = p[oldname]
-      del p[oldname]
+      del(p[oldname])
 
   repl_count = None
-  if gen_file:
-    repl_count = replace_string_in_file(gen_file, f"\"{oldname}\"", f"\"{newname}\"")
+  if ext["gen_file"]:
+    repl_count = replace_string_in_file(ext["gen_file"], f"\"{oldname}\"", f"\"{newname}\"")
 
   print(f"rename_device: delfiles={delfiles}, replace_string={repl_count}")
   return delfiles

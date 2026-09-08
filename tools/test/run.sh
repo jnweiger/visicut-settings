@@ -10,12 +10,18 @@ if [ ! -d "$basedir/.visicut" ]; then
   cp -aL ~/.visicut "$basedir"
 fi
 
-# simple check, if the expected two lasers from FBALABNBG are here:
+# simple check, if the expected two lasers from FABLABNBG are here:
 l1="Thunderlaser Nova 35
 Zing"
 l2=$(./vcsetman.py -d $basedir/.visicut list l| jq 'keys[]' -r | sort)
 test "$l1" = "$l2" || { echo "expected: '$l1' == '$l2'"; exit 1; }
 
+# requires: pip install pyinstaller
+pyinstaller vcsetman.py --onefile --path=lib/ --log-level WARN
+# we expect to see visicut_ops, visicut_xml, wiki_markdown_table there:
+strings dist/vcsetman | grep -C2 visicut
+l3=$(dist/vcsetman -d $basedir/.visicut list l| jq 'keys[]' -r | sort)
+test "$l1" = "$l3" || { echo "pyinstaller binary dist/vcsetman differs. Expected: '$l1' == '$l3'"; exit 1; }
 
 # convert wiki to useable visicut xml settings.
 w=$basedir/wiki
