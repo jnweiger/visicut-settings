@@ -156,7 +156,7 @@ def collect_laserprofiles(dir, gen_file=None):
   p = collect_profiles(dir)
   l = collect_devices(dir)
 
-  return { 'materials': m, 'profiles': p, 'devices': l, 'generator': generator }
+  return { 'materials': m, 'profiles': p, 'devices': l, 'generator': generator, 'encode_pathname': encode_xml_name }
 
 
 # Express the new path n as relative path coming from base b
@@ -181,13 +181,6 @@ def frelpath(n, b):
       return pre + b[len(n[:s])+1:]
     count = count + 1
 
-
-def path_of_laserprofile(m, d, p, t, b=None):
-  path = f"{d}/{m}/{t}mm/{p}.xml"
-  path = encode_xml_name(path)
-  if b:
-    return frelpath(path, b)
-  return path
 
 ####
 
@@ -483,7 +476,7 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
   for name, mat in mpd['materials'].items():
     mat_xml = fmt_material_xml(name, mat)
     md5 = hashlib.md5(mat_xml.encode("utf-8")).hexdigest()
-    filename = f"{dir}/materials/{encode_xml_name(name)}.xml"
+    filename = f"{dir}/materials/{mpd["encode_pathname"](name)}.xml"
     missing = not os.path.exists(filename)
     if not 'md5sum' in mat or md5 != mat['md5sum'] or missing:
       if not noop:
@@ -516,7 +509,7 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
       for p in m['profiles'][d]:
         for t in m['profiles'][d][p]:
           print(n,d,p,t, m['profiles'][d][p][t], file=sys.stderr)
-          name = f"{encode_xml_name(d)}/{encode_xml_name(n)}/{t}mm/{encode_xml_name(p)}.xml"
+          name = f"{mpd["encode_pathname"](d)}/{mpd["encode_pathname"](n)}/{t}mm/{mpd["encode_pathname"](p)}.xml"
           lp = m['profiles'][d][p][t]
           lp_xml, lp_anno = fmt_laserprofile_xml(lp)
           if lp_anno:
@@ -552,7 +545,7 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
   for name, pro in mpd['profiles'].items():
     pro_xml = fmt_profile_xml(name, pro)
     md5 = hashlib.md5(pro_xml.encode("utf-8")).hexdigest()
-    filename = f"{dir}/profiles/{encode_xml_name(name)}.xml"
+    filename = f"{dir}/profiles/{mpd["encode_pathname"](name)}.xml"
     missing = not os.path.exists(filename)
     if not 'md5sum' in pro or md5 != pro['md5sum'] or missing:
       if not noop:
@@ -587,7 +580,7 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
       print(f"unchanged: {filename}", file=sys.stderr)
       stats['same'] += 1
     else:
-      raise ValueError("FIME: must merge anno ontop of old_anno")
+      anno = old_anno | anno        # that is a dict merge (second dict wins on collisions) in Python 3.9+
 
       if not noop:
         if os.path.exists(filename) and orig_suffix:
@@ -610,7 +603,7 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
   for name, las in mpd['devices'].items():
     las_xml = fmt_device_xml(name, las)
     md5 = hashlib.md5(las_xml.encode("utf-8")).hexdigest()
-    filename = f"{dir}/devices/{encode_xml_name(name)}.xml"
+    filename = f"{dir}/devices/{mpd["encode_pathname"](name)}.xml"
     missing = not os.path.exists(filename)
     if not 'md5sum' in las or md5 != las['md5sum'] or missing:
       if not noop:

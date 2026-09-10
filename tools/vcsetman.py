@@ -3,12 +3,16 @@
 # vcsetman.py - manage visicut settings, native XML data and Wiki tables
 #
 # (C) 2026, juergen@fabmail.org
+#
+# v0.4      refactored rename_device to use mpd['encode_pathname']()
 
 
 import os, sys, json
 import argparse
 from urllib.request import urlopen
 from urllib.parse import urlsplit
+
+__version__ = "0.4"
 
 LIB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'lib')
 sys.path.insert(0, LIB_DIR)
@@ -26,9 +30,10 @@ def main():
     parser.add_argument("-d", "--settings-dir", metavar="DIR", default=def_settings_dir, help="My Visicut settings directory. Default ~/.visicut")
     parser.add_argument("-n", "--noop", action="store_true", help="Prevent an changes. Default: write or update settings when needed.")
     parser.add_argument("-v", "--verbose", action="store_true", help="Report more details.")
+    parser.add_argument("-V", "--version", action="store_true", help=f"Print the version number: {__version__}")
     parser.add_argument("-b", "--backup", action="store_true", help="Backup files with '.orig' suffix before overwriting. Default: No backup.")
 
-    subparsers = parser.add_subparsers(title="Available sub commands", metavar="COMMAND", dest="command", required=True)
+    subparsers = parser.add_subparsers(title="Available sub commands", metavar="COMMAND", dest="command", required=False)
 
     list_parser = subparsers.add_parser("list", aliases=["l", "dump"], help="print laserdevices, materials, and profiles found in the XML files of the settings directory.")
     list_parser.add_argument("filter", metavar="l|m|p|lp", nargs="?", choices=("all", "l", "lasers", "d", "devices", "n", "names", "m", "materials", "p", "profiles", "lp", "laserprofiles", "g", "gen", "generator"), default="all", help="optional filter to not print everything: lasers, materials, profiles")
@@ -68,7 +73,11 @@ def main():
 
     parser.set_defaults(generator_file=None)
     args = parser.parse_args()
-    if args.command is None:     # add_subparsers(..., required=True) in modern python.
+    if args.version:
+      print(__version__)
+      exit(0)
+
+    if args.command is None:     # add_subparsers(..., required=True) in modern python. but that spoils --version
       parser.print_help()
       parser.exit(2)
 
@@ -160,6 +169,7 @@ def main():
       imp = import_from_tables(table_list, args.laser_name, args.source)
       if args.verbose:
         print(json.dumps(imp))
+      imp['encode_pathname'] = encode_xml_name
       if not args.noop:
         stats = write_xml(imp, args.output_dir, noop=False, orig_suffix=(".orig" if args.backup else ""))
         print(stats)
@@ -183,16 +193,14 @@ def main():
     ############################
     if args.command in ("rename"):
       deleteme = None
-      ext = { "enc_old": encode_xml_name(args.oldname), "enc_new": encode_xml_name(args.newname), "gen_file": None }
-      if not args.noop: ext['gen_file'] = args.output_dir+"/laserprofiles/generator.json"
+      gen_file = None if args.noop else args.output_dir+"/laserprofiles/generator.json"     # CAUTION: keep gen_file in sync with visicut_xml.py:collect_laserprofiles()
 
       if args.oldname in mpd['devices'].keys():
-        # CAUTION: keep gen_file in sync with visicut_xml.py:collect_laserprofiles()
-        deleteme = rename_device(mpd, args.oldname, args.newname, ext)
+        deleteme = rename_device(mpd, args.oldname, args.newname, gen_file)
       elif args.oldname in mpd['profiles'].keys():
-        deleteme = rename_profile(mpd, args.oldname, args.newname, ext)
+        deleteme = rename_profile(mpd, args.oldname, args.newname)
       elif args.oldname in mpd['materials'].keys():
-        deleteme = rename_material(mpd, args.oldname, args.newname, ext)
+        deleteme = rename_material(mpd, args.oldname, args.newname)
       else:
         print(f"{args.oldname} is neither an existing device, profile or material.", file=sys.stderr)
         sys.exit(1)

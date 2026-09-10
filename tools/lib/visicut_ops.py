@@ -7,15 +7,53 @@
 import sys, re, shutil
 from pathlib import Path
 
-def rename_material(mpd, oldname, newname, old_name_enc=None, new_name_enc=None, anno_file=None):
+
+def rename_profile(mpd, oldname, newname):
+  delfiles = []     # record, which files we should delete, when writing out the data
+  if newname in mpd['profiles']:
+    raise ValueError(f"rename_profile('{oldname}', '{newname}') failed: profile '{newname}' already exists.")
+  p = mpd['profiles'][oldname]
+  p['name'] = newname
+  print(p, file=sys.stderr)
+  mpd['profiles'][newname] = p
+
+  if not 'encode_pathname' in mpd:
+    raise ValueError("rename_profile: no 'encode_pathname' method initialized. Cannot construct pathnames for deleting old files")
+  enc_oldname = mpd['encode_pathname'](oldname)
+  delfiles.append(f"profiles/{enc_oldname}.xml")
+
+  for n,m in mpd['materials'].items():
+    for d in m['profiles']:
+      if oldname in m['profiles'][d]:
+        for t in m['profiles'][d][oldname]:
+          enc_name = f"{mpd["encode_pathname"](d)}/{mpd["encode_pathname"](n)}/{t}mm/{mpd["encode_pathname"](oldname)}.xml"
+          delfiles.append(f"laserprofiles/{enc_name}")
+        m['profiles'][d][newname] = m['profiles'][d][oldname]
+        del(m['profiles'][d][oldname])
+
+  return delfiles
+
+
+def rename_material(mpd, oldname, newname):
   delfiles = []     # record, which files we should delete, when writing out the data
   if newname in mpd['materials']:
     raise ValueError(f"rename_material('{oldname}', '{newname}') failed: material '{newname}' already exists.")
+  m = mpd['materials'][oldname]
+  m['name'] = newname
+  print(m, file=sys.stderr)
+  mpd['materials'][newname] = m
 
-  raise ValueError(f"rename_material( not impl.")
+  if not 'encode_pathname' in mpd:
+    raise ValueError("rename_material: no 'encode_pathname' method initialized. Cannot construct pathnames for deleting old files")
+  enc_oldname = mpd['encode_pathname'](oldname)
+  delfiles.append(f"materials/{enc_oldname}.xml")
+  for lasername in mpd["devices"]:
+    enc_lasername = mpd['encode_pathname'](lasername)
+    delfiles.append(f"laserprofiles/{enc_lasername}/{enc_oldname}")
+  return delfiles
 
 
-def rename_device(mpd, oldname, newname, ext={}):
+def rename_device(mpd, oldname, newname, gen_file=None):
   delfiles = []     # record, which files we should delete, when writing out the data
   if newname in mpd['devices']:
     raise ValueError(f"rename_device('{oldname}', '{newname}') failed: device {newname} already exists.")
@@ -27,9 +65,11 @@ def rename_device(mpd, oldname, newname, ext={}):
   del(mpd['devices'][oldname])
 
   # record things for delete_paths later.
-  if 'old_enc' in ext:
-    delfiles.append(f"devices/{ext['old_enc']}.xml")    # a file
-    delfiles.append(f"laserprofiles/{ext['old_enc']}")  # a subtree
+  if not 'encode_pathname' in mpd:
+    raise ValueError("rename_device: no 'encode_pathname' method initialized. Cannot construct pathnames for deleting old files")
+  enc_oldname = mpd['encode_pathname'](oldname)
+  delfiles.append(f"devices/{enc_oldname}.xml")    # a file
+  delfiles.append(f"laserprofiles/{enc_oldname}")  # a subtree
 
   # walk throug all [materials]*[profiles] an rename keys there.
   for m in mpd['materials']:
@@ -39,8 +79,8 @@ def rename_device(mpd, oldname, newname, ext={}):
       del(p[oldname])
 
   repl_count = None
-  if ext["gen_file"]:
-    repl_count = replace_string_in_file(ext["gen_file"], f"\"{oldname}\"", f"\"{newname}\"")
+  if gen_file:
+    repl_count = replace_string_in_file(gen_file, f"\"{oldname}\"", f"\"{newname}\"")
 
   print(f"rename_device: delfiles={delfiles}, replace_string={repl_count}")
   return delfiles
@@ -139,7 +179,7 @@ def check_laserprofiles(mpd, autofix=True):
   ### find materials that have no name. (autocreated by profiles, but xml file missing in /materials folder.)
   for n,m in mpd['materials'].items():
     if not 'name' in m:
-      r.append(f"material '{n}' used in laserprofiles, but materials/{encode_xml_name(n)}.xml is missing.")
+      r.append(f"material '{n}' used in laserprofiles, but materials/{mpd["encode_pathname"](n)}.xml is missing.")
       if autofix:
         m['name'] = n
         fixcounter = fixcounter + 1
