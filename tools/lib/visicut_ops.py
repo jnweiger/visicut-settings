@@ -144,6 +144,44 @@ def used_laser_profiles(mpd, m, d):
   return plist
 
 
+def linear_spline_t(v, t):
+  # print(f"tgen({v}, {t})")
+  if not v.startswith("t(") or not v.endswith(")"):
+    return float(v)
+
+  s = v[2:-1]                # "1:60, 5:40, 8:15, 18:6"
+  s = re.split("[\\s,;]+", s)         # multiple comma, whitespace, semicolons split.
+  a = [x.split(':') for x in s]       # [['1', '60'], ['5', '40'], ['8', '15'], ['18', '6']]
+
+  def to_float(s: str) -> float:
+    return float(s.replace(',', '.'))   # allow both, . and , in floats...
+
+  f = sorted([[to_float(x), to_float(y)] for x, y in a], key=lambda pair: pair[0])
+  if len(f) < 1:
+    raise ValueError(f"no mapping pairs found in {v}")
+  if len(f) < 2:
+    return f[0][1]                    # nothing to interpolate, we are a constant.
+
+  if t <= f[1][0]:
+    # we are in the first interval or smaller. Compute derivative between first and second, then interpolate/extrapolate
+    d = (f[1][1] - f[0][1]) / (f[1][0] - f[0][0])
+    return f[0][1] + (t-f[0][0])*d
+
+  if t >= f[-2][0]:
+    # we are in the last inteval or larger, compute derivative between last and second last, then interpolate/extrapolate
+    d = (f[-1][1] - f[-2][1]) / (f[-1][0] - f[-2][0])
+    return f[-1][1] + (t-f[-1][0])*d
+
+  # loop through the remaining intervals to find where we sit, then interpolate
+  for i in range(1, len(f)-2):
+    if t <= f[i+1][0]:
+      d = (f[i+1][1] - f[i][1]) / (f[i+1][0] - f[i][0])
+      return f[i][1] + (t-f[i][0])*d
+
+  # unreachable
+  print(f)
+
+
 def generate_laserprofile(mpd, material_name, device_name, profile_name, thickness, print_prefix=""):
   print(f"{print_prefix}clp({material_name}, {device_name}, {profile_name}, {thickness})", file=sys.stderr)
   # plist = used_laser_profiles(mpd, material_name, device_name)
