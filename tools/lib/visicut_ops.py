@@ -144,6 +144,13 @@ def used_laser_profiles(mpd, m, d):
   return plist
 
 
+def linear_map(i1, t, i2, o1, o2):
+  print(f"linear_map({i1}, {t}, {i2}, {o1}, {o2})")
+  # inspired by arduino map()
+  m = (o2 - o1) / (i2 - i1)
+  return o1 + (t-i1)*m
+
+
 def linear_spline_t(v, t):
   # print(f"tgen({v}, {t})")
   if not v.startswith("t(") or not v.endswith(")"):
@@ -164,19 +171,16 @@ def linear_spline_t(v, t):
 
   if t <= f[1][0]:
     # we are in the first interval or smaller. Compute derivative between first and second, then interpolate/extrapolate
-    d = (f[1][1] - f[0][1]) / (f[1][0] - f[0][0])
-    return f[0][1] + (t-f[0][0])*d
+    return linear_map(f[0][0], t, f[1][0],  f[0][1], f[1][1])
 
   if t >= f[-2][0]:
     # we are in the last inteval or larger, compute derivative between last and second last, then interpolate/extrapolate
-    d = (f[-1][1] - f[-2][1]) / (f[-1][0] - f[-2][0])
-    return f[-1][1] + (t-f[-1][0])*d
+    return linear_map(f[-2][0], t, f[-1][0], f[-2][1], f[-1][1])
 
   # loop through the remaining intervals to find where we sit, then interpolate
   for i in range(1, len(f)-2):
     if t <= f[i+1][0]:
-      d = (f[i+1][1] - f[i][1]) / (f[i+1][0] - f[i][0])
-      return f[i][1] + (t-f[i][0])*d
+      return linear_map(f[i][0], t, f[i+1][0], f[i][1], f[i+1][1])
 
   # unreachable
   print(f)
