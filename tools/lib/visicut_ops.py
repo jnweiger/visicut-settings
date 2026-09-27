@@ -205,6 +205,10 @@ def generate_laserprofile(mpd, material_name, device_name, profile_name, thickne
        re.search(d[2], str(thickness),     re.IGNORECASE):
       print(f"{print_prefix}generator.{device_name}.{i}: match", d, file=sys.stderr)
       r = d[3].copy()
+      if r['speed'].startswith('t('):
+        print(f"{print_prefix}generate_laserprofile: evaluation of 't(...)' in {d[0]} {d[1]} {r} not implemented. thickness={thickness}")
+        continue
+
       date = datetime.datetime.now().strftime("%Y%m%d")
 
       r['annotations'] = { "source": f"generator.{device_name}.{i}", "description": "gen "+date }

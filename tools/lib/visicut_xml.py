@@ -120,7 +120,8 @@ def collect_laserprofiles(dir, gen_file=None):
   generator = {}
   if gen_file.is_file():
     generator = json.load(open(gen_file))
-  # {'Zing/Kiefernbrettchen/5.0mm/cut.xml': {'description': 'gen 20260729', 'source': '../4.0mm/cut.xml via /tool/vcprofman.py'}}
+    # [ "kiefern(brett|holz)", 	"cut",		"",		{ "power": 100, "speed": "t(1:60, 5:40, 8:15, 18:6)", "frequency": 500 } ],
+    # [ "kiefern(brett|holz)", 	"cut",		"^1[45678]",	{ "power": 100, "speed":  6, "frequency": 500 } ],
 
   for p in pdir.rglob("*.xml"):
     d = xmltodict.parse(open(p, 'rb'), xml_attribs=False)
