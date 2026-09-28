@@ -1,6 +1,11 @@
 #!/bin/sh
 #
 
+test_pyinstaller=false	# true or false
+test_importwiki=false	# true or false
+test_generator=true	# true or false
+
+
 basedir=/tmp/vca
 set -x
 set -e
@@ -16,29 +21,33 @@ Zing"
 l2=$(./vcsetman.py -d $basedir/.visicut list l| jq 'keys[]' -r | sort)
 test "$l1" = "$l2" || { echo "expected: '$l1' == '$l2'"; exit 1; }
 
-# requires: pip install pyinstaller
-pyinstaller vcsetman.py --onefile --path=lib/ --log-level WARN
-# we expect to see visicut_ops, visicut_xml, wiki_markdown_table there:
-strings dist/vcsetman | grep -C2 visicut
-l3=$(dist/vcsetman -d $basedir/.visicut list l| jq 'keys[]' -r | sort)
-test "$l1" = "$l3" || { echo "pyinstaller binary dist/vcsetman differs. Expected: '$l1' == '$l3'"; exit 1; }
+if $test_pyinstaller; then
+  # requires: pip install pyinstaller
+  pyinstaller vcsetman.py --onefile --path=lib/ --log-level WARN
+  # we expect to see visicut_ops, visicut_xml, wiki_markdown_table there:
+  strings dist/vcsetman | grep -C2 visicut
+  l3=$(dist/vcsetman -d $basedir/.visicut list l| jq 'keys[]' -r | sort)
+  test "$l1" = "$l3" || { echo "pyinstaller binary dist/vcsetman differs. Expected: '$l1' == '$l3'"; exit 1; }
+fi
 
-# convert wiki to useable visicut xml settings.
-w=$basedir/wiki
-rm -rf $w; mkdir $w
-./vcsetman.py -v -d $w  import https://wiki.fablab-nuernberg.de/w/Nova_35
+if $test_importwiki; then
+  # convert wiki to useable visicut xml settings.
+  w=$basedir/wiki
+  rm -rf $w; mkdir $w
+  ./vcsetman.py -v -d $w  import https://wiki.fablab-nuernberg.de/w/Nova_35
 
-for d in $w/laserprofiles $w/materials $w/profiles $w/devices; do
-  test -d $d || { echo "ERROR: expected existing dir $d"; exit 1; }
-done
+  for d in $w/laserprofiles $w/materials $w/profiles $w/devices; do
+    test -d $d || { echo "ERROR: expected existing dir $d"; exit 1; }
+  done
 
-for f in $w/laserprofiles/annotations.json; do
-  test -f $f || { echo "ERROR: expected existing: file $f"; exit 1; }
-done
+  for f in $w/laserprofiles/annotations.json; do
+    test -f $f || { echo "ERROR: expected existing: file $f"; exit 1; }
+  done
 
-## would that auto-merge? not yet.
-# rm -rf $w/*
-./vcsetman.py -v -d $w  import https://wiki.fablab-nuernberg.de/w/ZING_4030
+  ## would that auto-merge? not yet.
+  # rm -rf $w/*
+  ./vcsetman.py -v -d $w  import https://wiki.fablab-nuernberg.de/w/ZING_4030
 
-# are all thicknesses here in the material list?
-ls $w/laserprofiles/*/Sperrholz_32_Birke
+  # are all thicknesses here in the material list?
+  ls $w/laserprofiles/*/Sperrholz_32_Birke
+fi

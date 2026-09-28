@@ -113,6 +113,7 @@ def main():
       if filt:
         print(json.dumps(mpd[filt]))
       else:
+        del(mpd['encode_pathname'])     # that is a method
         print(json.dumps(mpd))
       sys.exit(0)
 

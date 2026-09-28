@@ -199,7 +199,8 @@ def generate_laserprofile(mpd, material_name, device_name, profile_name, thickne
     d = dlist[i]
     # Material    Profile     Thickness   { ...data... }
     # [ "holz",   "cut",          "3.0",  { "speed": 33, "power": 34 } ]
-    # [ 'holz',   'mark|eng',     '',     {'speed': 99, 'power': 34}]
+    # [ 'holz',   'mark|eng',     '',     { 'speed': 99, 'power': 34 } ]
+    # [ "kiefern(brett|holz)", "cut","",  { "power": 70, "speed": "t(2:8, 5:4, 8:1, 13:0.6, 18:0.4)", "min_power": "t(2:50, 5:55, 8:70, 13:70, 15:70)" } ],
     if re.search(d[0], material_name, re.IGNORECASE) and \
        re.search(d[1], profile_name,  re.IGNORECASE) and \
        re.search(d[2], str(thickness),     re.IGNORECASE):
