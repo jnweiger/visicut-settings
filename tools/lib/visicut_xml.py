@@ -23,6 +23,8 @@ def collect_materials(dir):
   for m in mdir.glob("*.xml"):
     d = xmltodict.parse(open(m, 'rb'), xml_attribs=False, strip_whitespace=False, force_list=('float',))
     d = d['material']
+    if '#text' in d:    # happens, when strip_whitespace==False
+      del(d['#text'])
     d['thicknesses'] = [float(t) for t in d['materialThicknesses']['float']]
     del(d['materialThicknesses'])
     d['md5sum'] = hashlib.file_digest(open(m, 'rb'), "md5").hexdigest()
@@ -75,6 +77,8 @@ def collect_profiles(dir):
     d = xmltodict.parse(open(p, 'rb'), xml_attribs=True, strip_whitespace=False)    # we want the class attribute
     # d = { 'vectorProfile': {'DPI': '500.0', 'description': 'rote linie nearest neigbour', 'name': 'cut-nn', 'orderStrategy': 'NEAREST', 'useOutline': 'false', 'isCut': 'true', 'width': '0.2'}}}
     t = list(d.keys())[0]
+    if '#text' in d[t]:    # happens, when strip_whitespace==False
+      del(d[t]['#text'])
     d[t]['type'] = t
     d[t]['md5sum'] = hashlib.file_digest(open(p, 'rb'), "md5").hexdigest()
     r[d[t]['name']] = { decode_xml_name(k): v for k, v in d[t].items() }
@@ -95,8 +99,12 @@ def collect_devices(dir):
     # if not str(p).endswith("Zing.xml"):
     #   print(json.dumps({"name": str(p), "data": d}))
     #   sys.exit(33)
+    if '#text' in d:    # happens, when strip_whitespace==False
+      del(d['#text'])
     if 'laserCutter' in d:
       d['laserCutter'] = { decode_xml_name(k): v for k, v in d['laserCutter'].items() }
+      if '#text' in d['laserCutter']:
+        del(d['laserCutter']['#text'])
     r[d['name']] = { decode_xml_name(k): v for k, v in d.items() }
     r[d['name']]['md5sum'] = hashlib.file_digest(open(p, 'rb'), "md5").hexdigest()
   return r
@@ -135,6 +143,8 @@ def collect_laserprofiles(dir, gen_file=None):
     # {'linked-list': {'com.t__oster.liblasercut.properties.FloatMinMaxPowerSpeedFrequencyProperty':
     #  {'power': '70.0', 'speed': '0.5', 'frequency': '500', 'min__power': '70.0'}}}
     d = list(list(d.values())[0].values())[0]
+    if '#text' in d:    # happens, when strip_whitespace==False
+      del(d['#text'])
     # {'power': '70.0', 'speed': '0.5', 'frequency': '500', 'min__power': '70.0'}
     rpath = p.relative_to(pdir)
     # rpath = "Thunderlaser_32_Nova_32_35/Sperrholz_32_Kiefer/4.0mm/cut.xml"
@@ -436,7 +446,6 @@ def fmt_device_xml(name, d):
   <projectorWidth>{projectorWidth}</projectorWidth>
   <projectorHeight>{projectorHeight}</projectorHeight>
   <thumbnailPath>{thumbnailPath}</thumbnailPath>
-  <description>{description}</description>
   <name>{name}</name>
 </laserDevice>
 """
@@ -451,8 +460,10 @@ def fmt_device_xml(name, d):
   if not cl:
     raise ValueError(f"fmt_device_xml({name}) not implemented. We can do EpilogZing and Ruida")
 
-  print(d, xml_escape_values(d, { "version": "0", "originBottomLeft": "false", "jobSentText": "$jobname -> $name", "jobPrefix": "visicut 111", "laserCutter": {"class": cl, "baudRate": "921600", "host": "", "hostname": "", "port": "515", "comport": "auto", "autofocus": "false", "hideSoftwareFocus": "true", "BedWidth": "400.222", "bedWidth": "400.111", "BedHeight": "300", "bedHeight": "300", "LaserPowerMin": "0", "LaserPowerMax": "100", "MaxVectorMoveSpeed": "1000", "MaxVectorCutSpeed": "1000", "serialTimeout": "15000", "exportPath": "", "uploadMethod": "IP"}, "cameraTiming": "0", "projectorTiming": "0", "projectorWidth": "0", "projectorHeight": "0", "thumbnailPath": f"{name}.png", "description": "", "name": name }))
-  return template.format_map(xml_escape_values(d, { "version": "0", "originBottomLeft": "false", "jobSentText": "$jobname -> $name", "jobPrefix": "visicut 111", "laserCutter": {"class": cl, "baudRate": "921600", "host": "", "hostname": "", "port": "515", "comport": "auto", "autofocus": "false", "hideSoftwareFocus": "true", "BedWidth": "400.222", "bedWidth": "400.111", "BedHeight": "300", "bedHeight": "300", "LaserPowerMin": "0", "LaserPowerMax": "100", "MaxVectorMoveSpeed": "1000", "MaxVectorCutSpeed": "1000", "serialTimeout": "15000", "exportPath": "", "uploadMethod": "IP"}, "cameraTiming": "0", "projectorTiming": "0", "projectorWidth": "0", "projectorHeight": "0", "thumbnailPath": f"{name}.png", "description": "", "name": name }))
+  dev_defaults = { "version": "0", "originBottomLeft": "false", "jobSentText": "$jobname -> $name", "jobPrefix": "visicut 111", "laserCutter": {"class": cl, "baudRate": "921600", "host": "", "hostname": "", "port": "515", "comport": "auto", "autofocus": "false", "hideSoftwareFocus": "true", "BedWidth": "400.222", "bedWidth": "400.111", "BedHeight": "300", "bedHeight": "300", "LaserPowerMin": "0", "LaserPowerMax": "100", "MaxVectorMoveSpeed": "1000", "MaxVectorCutSpeed": "1000", "serialTimeout": "15000", "exportPath": "", "uploadMethod": "IP"}, "cameraTiming": "0", "projectorTiming": "0", "projectorWidth": "0", "projectorHeight": "0", "thumbnailPath": f"{name}.png", "description": "", "name": name }
+
+  # print(d, dev_defaults)
+  return template.format_map(xml_escape_values(d, dev_defaults))
 
 
 def _mkdir_pf(file):
@@ -518,7 +529,7 @@ def write_xml(mpd, dir, noop=False, orig_suffix=""):
     for d in m['profiles']:
       for p in m['profiles'][d]:
         for t in m['profiles'][d][p]:
-          print(n,d,p,t, m['profiles'][d][p][t], file=sys.stderr)
+          # print(n,d,p,t, m['profiles'][d][p][t], file=sys.stderr)
           name = f"{mpd["encode_pathname"](d)}/{mpd["encode_pathname"](n)}/{t}mm/{mpd["encode_pathname"](p)}.xml"
           lp = m['profiles'][d][p][t]
           lp_xml, lp_anno = fmt_laserprofile_xml(lp)

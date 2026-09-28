@@ -1,9 +1,10 @@
 #!/bin/sh
 #
 
+test_verbosecheck=false	# true or false
+test_generator=true	# true or false
 test_pyinstaller=false	# true or false
 test_importwiki=false	# true or false
-test_generator=true	# true or false
 
 
 basedir=/tmp/vca
@@ -20,6 +21,15 @@ l1="Thunderlaser Nova 35
 Zing"
 l2=$(./vcsetman.py -d $basedir/.visicut list l| jq 'keys[]' -r | sort)
 test "$l1" = "$l2" || { echo "expected: '$l1' == '$l2'"; exit 1; }
+
+if $test_verbosecheck; then
+  ./vcsetman.py -d $basedir/.visicut check 2>&1 | grep -v 'unchanged: '
+  ./vcsetman.py -d $basedir/.visicut check 2>&1 | grep 'unchanged: ' | wc -l
+  ./vcsetman.py -d $basedir/.visicut --verbose check 2>&1 | grep 'generate_laserprofile(' | wc -l
+fi
+if $test_generator; then
+  ./vcsetman.py -d $basedir/.visicut --verbose check -o $basedir/fix --fix 
+fi
 
 if $test_pyinstaller; then
   # requires: pip install pyinstaller
@@ -51,3 +61,5 @@ if $test_importwiki; then
   # are all thicknesses here in the material list?
   ls $w/laserprofiles/*/Sperrholz_32_Birke
 fi
+
+
