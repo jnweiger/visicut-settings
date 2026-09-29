@@ -207,9 +207,16 @@ def generate_laserprofile(mpd, material_name, device_name, profile_name, thickne
        re.search(d[2], str(thickness),     re.IGNORECASE):
       print(f"{print_prefix}generator.{device_name}.{i}: match", d, file=sys.stderr)
       r = d[3].copy()
-      if str(r['speed']).startswith('t('):
-        print(f"{print_prefix}generate_laserprofile: evaluation of 't(...)' in {d[0]} {d[1]} {r} not implemented. thickness={thickness}")
-        # time.sleep(3)
+      rval_t = 0
+      for rval in r.keys():
+        if str(r[rval]).startswith('t('): rval_t += 1
+      if rval_t:
+        for rval in r.keys():
+          if str(r[rval]).startswith('t('):
+            val = linear_spline_t(r[rval], thickness)
+            print(f"{print_prefix}generate_laserprofile: {material_name} {profile_name} linear_spline_t('{r[rval]}', {thickness}) = {val} in {d[0]} {d[1]} {r}", file=sys.stderr)
+            r[rval] = val
+        print(f"{print_prefix}generate_laserprofile: {material_name} {profile_name} {thickness}: {r} continue ...", file=sys.stderr)
         continue
 
       date = datetime.datetime.now().strftime("%Y%m%d")

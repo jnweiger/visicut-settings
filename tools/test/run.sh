@@ -28,7 +28,7 @@ if $test_verbosecheck; then
   ./vcsetman.py -d $basedir/.visicut --verbose check 2>&1 | grep 'generate_laserprofile(' | wc -l
 fi
 if $test_generator; then
-  ./vcsetman.py -d $basedir/.visicut --verbose check -o $basedir/fix --fix 
+  ./vcsetman.py -d $basedir/.visicut --verbose check -o $basedir/fix --fix
 fi
 
 if $test_pyinstaller; then
