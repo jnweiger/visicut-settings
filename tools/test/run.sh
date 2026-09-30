@@ -29,6 +29,7 @@ if $test_verbosecheck; then
 fi
 if $test_generator; then
   ./vcsetman.py -d $basedir/.visicut --verbose check -o $basedir/fix --fix
+  ./vcsetman.py -d $basedir/.visicut generate Zing Kiefernbrettchen cut 9
 fi
 
 if $test_pyinstaller; then
@@ -61,5 +62,4 @@ if $test_importwiki; then
   # are all thicknesses here in the material list?
   ls $w/laserprofiles/*/Sperrholz_32_Birke
 fi
-
 

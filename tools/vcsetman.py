@@ -68,7 +68,8 @@ def main():
     gen_parser = subparsers.add_parser("generate", aliases=["gen"], help="Print a a json structure with laser settings for a given laser, material and thickness")
     gen_parser.add_argument("device", help="Name of a laser. If unsure, use 'dump lasers | jq keys'")
     gen_parser.add_argument("material", help="Name of a material. The generator matches substring patterns. See 'dump m | jq keys' and your generator.json file.")
-    gen_parser.add_argument("thickness", help="Thickness in mm. The generator interpolates and extrapolates according to generator.json")
+    gen_parser.add_argument("method", nargs="?", help="Laser operation. E.g. cut, mark, engrave.", default=None)
+    gen_parser.add_argument("thickness", nargs="?", help="Thickness in mm. The generator interpolates and extrapolates according to generator.json", default=None)
     gen_parser.add_argument("-g", "--gen", "--gen-file", "--generator-file", dest="generator_file", type=str, help="Specify the generator file used for fixing. This implies --fix. Default: SETTINGS_DIR/laserprofiles/generator.json")
 
     parser.set_defaults(generator_file=None)
@@ -188,7 +189,33 @@ def main():
 
     ############################
     if args.command in ("generate"):
-      print(f"{args.command} not impl.", file=sys.stderr)
+      g = mpd["generator"]
+      if args.device is None:
+        print(f"ERROR: generator for device {args.device} not found. Try one of: {list(g.keys())}", file=sys.stderr)
+        sys.exit(1)
+      if not args.method:
+        methods = list(mpd["profiles"].keys())
+      else:
+        if not args.method in mpd["profiles"].keys():
+          print(f"ERROR: profile for method {args.method} not found. Try one of: {list(mpd["profiles"].keys())}", file=sys.stderr)
+          sys.exit(1)
+        methods = [ args.method ]
+      if not args.thickness:
+        thicknesses = set()
+        for m in mpd["materials"].values():
+          if "thicknesses" in m:
+            thicknesses = thicknesses.union(m["thicknesses"])
+        thicknesses = sorted(thicknesses)
+      else:
+        thicknesses = [ args.thickness ]
+      print(f"device={args.device} | methods={methods} thicknesses={thicknesses}", file=sys.stderr)
+      r = []
+      for m in methods:
+        for t in thicknesses:
+          r.append(generate_laserprofile(mpd, args.material, args.device, m, float(t)))
+          if "annotations" in r[-1]:
+            del(r[-1]["annotations"])
+      print(json.dumps(r))
       sys.exit(0)
 
     ############################
