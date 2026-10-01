@@ -1,44 +1,29 @@
 {
   "Zing": [
+    [ "acryl", 		"cut",		"",	{ "power": "t(1:80, 2:100, 3:100)", "speed": "t(1:80, 3:40, 4:25, 10:5)", "frequency": 5000 } ],
 
-    [ "baumwoll",	"cut",		"^[01]",	{ "power": 50, "speed": 100, "frequency": 500 } ],
-    [ "baumwoll",	"mark|eng",	"",		{ "power": 20, "speed": 100, "frequency": 500 } ],
+    [ "pappe",		"cut",		"<0.5",	{ "power": "t(0:10, 0.25:20, 0.5:40)", "speed": "t(0:100, 0.25:100)", "frequency": 500 } ],
+    [ "pappe",		"mark",		"<0.5",	{ "power": 4,  "speed": 100, "frequency": 500 } ],
+    [ "pappe",		"eng",		"<0.5",	{ "power": 20, "speed": 100, "frequency": 500 } ],
 
-    [ "kiefern(brett|holz)", 	"cut",		"",		{ "power": 100, "speed": "t(1:60, 5:40, 8:15, 18:6)", "frequency": 500 } ],
-    [ "kiefern(brett|holz)", 	"cut",		"^1[45678]",	{ "power": 100, "speed":  6, "frequency": 500 } ],
-    [ "kiefern(brett|holz)", 	"cut",		"^1[023]",	{ "power": 100, "speed": 10, "frequency": 500 } ],
-    [ "kiefern(brett|holz)", 	"cut",		"^[678]",	{ "power": 100, "speed": 15, "frequency": 500 } ],
-    [ "kiefern(brett|holz)", 	"cut",		"^[345]",	{ "power": 100, "speed": 40, "frequency": 500 } ],
-    [ "kiefern(brett|holz)", 	"cut",		"^[012]",	{ "power": 100, "speed": 60, "frequency": 500 } ],
-    [ "kiefern(brett|holz)",	"mark|eng",	"",		{ "power": 25, 	"speed": 100, "frequency": 500 } ],
+    [ "baumwoll",	"cut",		"<=1",	{ "power": "t(0:10, 1:50)", "speed": "t(0:100, 1:100)", "frequency": 500 } ],
+    [ "baumwoll",	"mark",		"<=1",	{ "power": 20, "speed": 100, "frequency": 500 } ],
+    [ "baumwoll",	"eng",		"<=1",	{ "power": 80, "speed": 100, "frequency": 500 } ],
 
-    [ "finnpappe",	"cut",		"^3",		{ "power": 100, "speed": 60, "frequency": 500 } ],
-    [ "finnpappe",	"cut",		"^2",		{ "power": 100, "speed": 80, "frequency": 500 } ],
-    [ "finnpappe",	"cut",		"^[01]",	{ "power": 100, "speed": 100, "frequency": 500 } ],
-    [ "finnpappe",	"mark|eng",	"",		{ "power": 15, 	"speed": 100, "frequency": 500 } ],
+    [ "kiefern(brett|holz)", 	"cut",	"",	{ "power": 100, "speed": "t(2:60, 5:40, 8:15, 18:6)", "frequency": 500 } ],
 
-    [ "acryl", 		"cut",		"",		{ "power": 100, "speed": "t(2:50, 3:40, 4:25, 5:15, 6:10, 8:8, 10:5)", "frequency": 5000 } ],
-    [ "acryl", 		"cut",		"^(9,10)",	{ "power": 100, "speed": 5, "frequency": 5000 } ],
-    [ "acryl", 		"cut",		"^(7,8)",	{ "power": 100, "speed": 8, "frequency": 5000 } ],
-    [ "acryl", 		"cut",		"^6",		{ "power": 100, "speed": 10, "frequency": 5000 } ],
-    [ "acryl", 		"cut",		"^5",		{ "power": 100, "speed": 15, "frequency": 5000 } ],
-    [ "acryl", 		"cut",		"^4",		{ "power": 100, "speed": 25, "frequency": 5000 } ],
-    [ "acryl", 		"cut",		"^3",		{ "power": 100, "speed": 40, "frequency": 5000 } ],
-    [ "acryl", 		"cut",		"^012",		{ "power": 100, "speed": 50, "frequency": 5000 } ],
-    [ "acryl",		"mark|eng",	"",		{ "power": 25, 	"speed": 100, "frequency": 5000 } ],
+    [ "finnpappe",	"cut",		"<=3",	{ "power": "t(2:60, 3:100)", "speed": 100, "frequency": 500 } ],
+    [ "finnpappe",	"mark",		"",	{ "power": 15, 	"speed": 100, "frequency": 500 } ],
+    [ "finnpappe",	"eng",		"",	{ "power": 50, 	"speed": 100, "frequency": 500 } ],
 
-    [ "hpl( |$)",	"cut",		"^[234]",	{ "power": 100, "speed": 10, "frequency": 5000 } ],
-    [ "hpl( |$)",	"cut",		"^[01]",	{ "power": 100, "speed": 20, "frequency": 5000 } ],
-    [ "hpl( |$)",	"mark|eng",	"",		{ "power": 25, "speed": 100, "frequency": 5000 } ],
+    [ "hpl( |$)",	"cut",		"^[234]",	{ "power": 100, "speed": "t(1:20, 4:10)", "frequency": 5000 } ],
 
     [ "pu( |$)|schaum",	"cut",		"^1[012]",	{ "power": 100, "speed": 80, "frequency": 5000 } ],
     [ "pu( |$)|schaum",	"cut",		"^[6789]",	{ "power": 75, "speed": 100, "frequency": 5000 } ],
     [ "pu( |$)|schaum",	"cut",		"^[12345]",	{ "power": 50, "speed": 100, "frequency": 5000 } ],
-    [ "pu( |$)|schaum",	"mark|eng",	"",		{ "power": 25, 	"speed": 100, "frequency": 5000 } ],
 
     [ "pom|delrin",	"cut",		"^[56]",	{ "power": 100, "speed": 5, "frequency": 5000 } ],
     [ "pom|delrin",	"cut",		"^[234]",	{ "power": 100, "speed": 10, "frequency": 5000 } ],
-    [ "pom|delrin",	"mark|eng",	"",		{ "power": 50, 	"speed": 100, "frequency": 5000 } ],
 
     [ "pet",		"cut",		"^0",		{ "power": 100, "speed": 80, "frequency": 5000 } ],
     [ "pet",		"mark|eng",	"",		{ "power": 15, 	"speed": 100, "frequency": 5000 } ],
@@ -58,21 +43,19 @@
     [ "holz", 		"cut",		"^2",		{ "power": 100, "speed": 40, "frequency": 500 } ],
     [ "holz", 		"cut",		"^1",		{ "power": 100, "speed": 60, "frequency": 500 } ],
     [ "holz", 		"cut",		"^0",		{ "power": 100, "speed": 80, "frequency": 500 } ],
-    [ "holz",		"mark|eng",	"",		{ "power": 25, 	"speed": 100, "frequency": 500 } ],
 
     [ "furnier", "cut",		"^[01]",	{ "power": 50, "speed": 100, "frequency": 500 } ],
-    [ "furnier", "mark|eng",	"",		{ "power": 20, "speed": 100, "frequency": 500 } ],
 
     [ "kraftplex", 	"cut",		"^3",		{ "power": 100, "speed": 30, "frequency": 2000 } ],
     [ "kraftplex", 	"cut",		"^2",		{ "power": 100, "speed": 50, "frequency": 2000 } ],
     [ "kraftplex", 	"cut",		"^1",		{ "power": 100, "speed": 70, "frequency": 2000 } ],
     [ "kraftplex", 	"cut",		"^0",		{ "power": 60, "speed": 100, "frequency": 2000 } ],
-    [ "kraftplex",	"mark|eng",	"",		{ "power": 30, 	"speed": 100, "frequency": 2000 } ],
 
     [ "mdf",		"cut",	"^[12]",		{ "power": 100, 	"speed": 80, "frequency": 500 } ],
     [ "mdf",		"cut",	"^[34]",		{ "power": 100, 	"speed": 60, "frequency": 500 } ],
-    [ "mdf",		"mark|eng",	"",		{ "power": 10, 	"speed": 100, "frequency": 500 } ]
 
+    [ "",	"mark",		"",		{ "power": 25, "speed": 100, "frequency": 5000 } ],
+    [ "",	"eng",		"",		{ "power": 100, "speed": 100, "frequency": 5000 } ]
   ],
   "Thunderlaser Nova 35": [
 
@@ -82,7 +65,7 @@
     [ "kiefern(brett|holz)", "cut",		"",		{ "power": 70, "speed": "t(2:8, 5:4, 8:1, 13:0.6, 18:0.4)", "min_power": "t(2:50, 5:55, 8:70, 13:70, 15:70)" } ],
     [ "kiefern(brett|holz)", 	"cut",		"^1[45678]",	{ "power": 70, "min_power": 70, "speed": 0.4 } ],
     [ "kiefern(brett|holz)", 	"cut",		"^1[023]",	{ "power": 70, "min_power": 70, "speed": 0.6 } ],
-    [ "kiefern(brett|holz)", 	"cut",		"^[678]",	{ "power": 70, "min_power": 70, "speed": 1 } ],
+    [ "kiefern(brett|holz)", 	"cut",		"^[6789]",	{ "power": 70, "min_power": 70, "speed": 1 } ],
     [ "kiefern(brett|holz)", 	"cut",		"^[345]",	{ "power": 70, "min_power": 55, "speed": 4 } ],
     [ "kiefern(brett|holz)", 	"cut",		"^[012]",	{ "power": 70, "min_power": 50, "speed": 8 } ],
     [ "kiefern(brett|holz)",	"mark|eng",	"",		{ "power": 25, 	"min_power": 10, "speed": 80 } ],

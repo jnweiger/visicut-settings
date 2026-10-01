@@ -212,9 +212,9 @@ def main():
       r = []
       for m in methods:
         for t in thicknesses:
-          r.append(generate_laserprofile(mpd, args.material, args.device, m, float(t)))
-          if "annotations" in r[-1]:
-            del(r[-1]["annotations"])
+          r.append( [ args.device, m, t, generate_laserprofile(mpd, args.material, args.device, m, float(t)) ] )
+          if "annotations" in r[-1][3]:
+            del(r[-1][3]["annotations"])
       print(json.dumps(r))
       sys.exit(0)
 

@@ -145,8 +145,16 @@ def used_laser_profiles(mpd, m, d):
   return plist
 
 
+def fmt_number(val, digits=1):
+  # round to one digit after the comma. If that digit is a .0, then convert to integer.
+  if val < 0: val = 0   # never below 0. speed 0 is odd, but power 0 may be intended sometimes.
+  if val == int(val + .5):
+    return int(val + .5)
+  return round(val, digits)
+
+
 def linear_map(i1, t, i2, o1, o2):
-  print(f"linear_map({i1}, {t}, {i2}, {o1}, {o2})")
+  print(f"linear_map({i1}, {t}, {i2}, {o1}, {o2})", file=sys.stderr)
   # inspired by arduino map()
   m = (o2 - o1) / (i2 - i1)
   return o1 + (t-i1)*m
@@ -198,10 +206,27 @@ def generate_laserprofile(mpd, material_name, device_name, profile_name, thickne
   dlist = mpd['generator'][device_name]
   for i in range(len(dlist)):
     d = dlist[i]
-    # Material    Profile     Thickness   { ...data... }
-    # [ "holz",   "cut",          "3.0",  { "speed": 33, "power": 34 } ]
-    # [ 'holz',   'mark|eng',     '',     { 'speed': 99, 'power': 34 } ]
-    # [ "kiefern(brett|holz)", "cut","",  { "power": 70, "speed": "t(2:8, 5:4, 8:1, 13:0.6, 18:0.4)", "min_power": "t(2:50, 5:55, 8:70, 13:70, 15:70)" } ],
+    # Material    Profile      Thickness  { ...data... }
+    # [ "holz",   "cut",           "3.0", { "speed": 33, "power": 34 } ]
+    # [ 'holz',   'mark|eng',         '', { 'speed': 99, 'power': 34 } ]
+    # [ "kiefern(brett|holz)", "cut", "", { "power": 70, "speed": "t(2:8, 5:4, 8:1, 13:0.6, 18:0.4)", "min_power": "t(2:50, 5:55, 8:70, 13:70, 15:70)" } ],
+    # [ "baumwoll",       "cut",      "", { "power": "t(0:10, 1:50, 2:100, 3:100)", "speed": "t(0:100, 1:100, 2:50, 4:25)", "frequency": 500 } ],
+    # [ "pappe",          "cut", "<=0.5", { "power": "t(0.25:20, 0.5:10)", "speed": "t(0.1:50, 0.25:100, 0.5:100)" } ],
+
+    if len(d[2]) > 0 and d[2][0] == '<':
+      if len(d[2]) > 1 and d[2][1] == '=':
+        d[2] = d[2][1:]
+      if float(thickness) > float(d[2][1:]):    # too large
+        continue
+      d[2] = ''
+
+    if len(d[2]) > 0 and d[2][0] == '>':
+      if len(d[2]) > 1 and d[2][1] == '=':
+        d[2] = d[2][1:]
+      if float(thickness) < float(d[2][1:]):    # too small
+        continue
+      d[2] = ''
+
     if re.search(d[0], material_name, re.IGNORECASE) and \
        re.search(d[1], profile_name,  re.IGNORECASE) and \
        re.search(d[2], str(thickness),     re.IGNORECASE):
@@ -213,11 +238,11 @@ def generate_laserprofile(mpd, material_name, device_name, profile_name, thickne
       if rval_t:
         for rval in r.keys():
           if str(r[rval]).startswith('t('):
-            val = linear_spline_t(r[rval], thickness)
+            val = fmt_number(linear_spline_t(r[rval], thickness))
             print(f"{print_prefix}generate_laserprofile: {material_name} {profile_name} linear_spline_t('{r[rval]}', {thickness}) = {val} in {d[0]} {d[1]} {r}", file=sys.stderr)
             r[rval] = val
         print(f"{print_prefix}generate_laserprofile: {material_name} {profile_name} {thickness}: {r} continue ...", file=sys.stderr)
-        continue
+        # continue
 
       date = datetime.datetime.now().strftime("%Y%m%d")
 
