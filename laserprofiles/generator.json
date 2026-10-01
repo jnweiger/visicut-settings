@@ -16,46 +16,31 @@
     [ "finnpappe",	"mark",		"",	{ "power": 15, 	"speed": 100, "frequency": 500 } ],
     [ "finnpappe",	"eng",		"",	{ "power": 50, 	"speed": 100, "frequency": 500 } ],
 
-    [ "hpl( |$)",	"cut",		"^[234]",	{ "power": 100, "speed": "t(1:20, 4:10)", "frequency": 5000 } ],
+    [ "hpl( |$)",	"cut",		"",	{ "power": 100, "speed": "t(1:20, 4:10)", "frequency": 5000 } ],
 
-    [ "pu( |$)|schaum",	"cut",		"^1[012]",	{ "power": 100, "speed": 80, "frequency": 5000 } ],
-    [ "pu( |$)|schaum",	"cut",		"^[6789]",	{ "power": 75, "speed": 100, "frequency": 5000 } ],
-    [ "pu( |$)|schaum",	"cut",		"^[12345]",	{ "power": 50, "speed": 100, "frequency": 5000 } ],
+    [ "pu( |$)|schaum",	"cut",		"",	{ "power": "t(5:50, 8:75, 12: 100)", "speed": "t(5:100, 8:100, 12:80)", "frequency": 5000 } ],
 
-    [ "pom|delrin",	"cut",		"^[56]",	{ "power": 100, "speed": 5, "frequency": 5000 } ],
-    [ "pom|delrin",	"cut",		"^[234]",	{ "power": 100, "speed": 10, "frequency": 5000 } ],
+    [ "pom|delrin",	"cut",		"",	{ "power": 100, "speed": "t(4:10, 6:5)", "frequency": 5000 } ],
 
-    [ "pet",		"cut",		"^0",		{ "power": 100, "speed": 80, "frequency": 5000 } ],
-    [ "pet",		"mark|eng",	"",		{ "power": 15, 	"speed": 100, "frequency": 5000 } ],
+    [ "pet",		"cut",		"<=1",	{ "power": 100, "speed": "t(0.2:100, 0.5:80, 1:50", "frequency": 5000 } ],
+    [ "pet",		"mark",	"",		{ "power": 15, 	"speed": 100, "frequency": 5000 } ],
+    [ "pet",		"eng",	"",		{ "power": 50, 	"speed": 100, "frequency": 5000 } ],
 
-    [ "pappe|papier",	"cut",		"^0",		{ "power": 100, "speed": 80, "frequency": 500 } ],
-    [ "pappe|papier",	"mark|eng",	"",		{ "power": 15, 	"speed": 100, "frequency": 500 } ],
-    [ "pappe",		"cut",		"^2",		{ "power": 100, "speed": 50, "frequency": 500 } ],
-    [ "pappe",		"cut",		"^1",		{ "power": 100, "speed": 80, "frequency": 500 } ],
-    [ "pappe",		"cut",		"^0",		{ "power": 49, "speed": 100, "frequency": 500 } ],
+    [ "pappe|papier",	"cut",		"<=1",	{ "power": 100, "speed": "t(0:100, 1:50)", "frequency": 500 } ],
+    [ "pappe|papier",	"mark|eng",	"<=1",	{ "power": 15, 	"speed": 100, "frequency": 500 } ],
 
-    [ "holz", 		"cut",		"^8",		{ "power": 100, "speed": 10, "frequency": 500 } ],
-    [ "holz", 		"cut",		"^7",		{ "power": 100, "speed": 12, "frequency": 500 } ],
-    [ "holz", 		"cut",		"^6",		{ "power": 100, "speed": 15, "frequency": 500 } ],
-    [ "holz", 		"cut",		"^5",		{ "power": 100, "speed": 17, "frequency": 500 } ],
-    [ "holz", 		"cut",		"^4",		{ "power": 100, "speed": 20, "frequency": 500 } ],
-    [ "holz", 		"cut",		"^3",		{ "power": 100, "speed": 30, "frequency": 500 } ],
-    [ "holz", 		"cut",		"^2",		{ "power": 100, "speed": 40, "frequency": 500 } ],
-    [ "holz", 		"cut",		"^1",		{ "power": 100, "speed": 60, "frequency": 500 } ],
-    [ "holz", 		"cut",		"^0",		{ "power": 100, "speed": 80, "frequency": 500 } ],
+    [ "pappe",		"cut",		"<=3",	{ "power": "t(0:50, 1:100, 2:100)", "speed": "t(0:100, 1:80, 2:50)", "frequency": 500 } ],
 
-    [ "furnier", "cut",		"^[01]",	{ "power": 50, "speed": 100, "frequency": 500 } ],
+    [ "holz", 		"cut",		"",	{ "power": 100, "speed": "t(0:80, 1:60, 2:40, 3:30, 4:20, 5:17, 6:15, 7:12, 8:10)", "frequency": 500 } ],
 
-    [ "kraftplex", 	"cut",		"^3",		{ "power": 100, "speed": 30, "frequency": 2000 } ],
-    [ "kraftplex", 	"cut",		"^2",		{ "power": 100, "speed": 50, "frequency": 2000 } ],
-    [ "kraftplex", 	"cut",		"^1",		{ "power": 100, "speed": 70, "frequency": 2000 } ],
-    [ "kraftplex", 	"cut",		"^0",		{ "power": 60, "speed": 100, "frequency": 2000 } ],
+    [ "furnier", 	"cut",		"<=1",	{ "power": "(0:80, 1:50)", "speed": 100, "frequency": 500 } ],
 
-    [ "mdf",		"cut",	"^[12]",		{ "power": 100, 	"speed": 80, "frequency": 500 } ],
-    [ "mdf",		"cut",	"^[34]",		{ "power": 100, 	"speed": 60, "frequency": 500 } ],
+    [ "kraftplex", 	"cut",		"",	{ "power": "t(0:60, 1:100, 2:100)", "speed": "t(0:100, 1:70, 2:50, 3:30)", "frequency": 2000 } ],
 
-    [ "",	"mark",		"",		{ "power": 25, "speed": 100, "frequency": 5000 } ],
-    [ "",	"eng",		"",		{ "power": 100, "speed": 100, "frequency": 5000 } ]
+    [ "mdf",		"cut",		"",	{ "power": 100, "speed": "t(2:80, 4:60)", "frequency": 500 } ],
+
+    [ "",		"mark",		"",	{ "power": 25, "speed": 100, "frequency": 5000 } ],
+    [ "",		"eng",		"",	{ "power": 100, "speed": 100, "frequency": 5000 } ]
   ],
   "Thunderlaser Nova 35": [
 
